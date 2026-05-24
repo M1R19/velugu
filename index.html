@@ -3,13 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#FBF6EE" />
+  <meta name="description" content="Velugu — a cozy 30-day spoken-Telugu learning app. Hear, repeat, earn lanterns. No script required." />
   <title>Velugu — light up Telugu</title>
-  <link rel="stylesheet" href="styles.css" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <meta name="theme-color" content="#E8896B" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Velugu" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Velugu" />
+  <meta property="og:title" content="Velugu — light up Telugu" />
+  <meta property="og:description" content="A cozy 30-day spoken-Telugu app. Hear, repeat, earn lanterns." />
+  <meta property="og:url" content="https://m1r19.github.io/velugu/" />
+  <meta property="og:image" content="https://m1r19.github.io/velugu/og-image.svg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Velugu — light up Telugu — a cozy 30-day spoken-Telugu app" />
+
+  <!-- Twitter card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Velugu — light up Telugu" />
+  <meta name="twitter:description" content="A cozy 30-day spoken-Telugu app. Hear, repeat, earn lanterns." />
+  <meta name="twitter:image" content="https://m1r19.github.io/velugu/og-image.svg" />
+  <meta name="twitter:image:alt" content="Velugu — light up Telugu" />
+
+  <!-- Fonts & styles -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=Noto+Serif+Telugu:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><radialGradient id='g' cx='0.5' cy='0.4' r='0.7'><stop offset='0%' stop-color='%23FFE3A6'/><stop offset='100%' stop-color='%23E8896B'/></radialGradient></defs><ellipse cx='50' cy='55' rx='30' ry='40' fill='url(%23g)'/><rect x='46' y='10' width='8' height='8' fill='%232A2620' rx='2'/></svg>" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <!-- Top bar -->

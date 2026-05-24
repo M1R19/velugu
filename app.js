@@ -1782,6 +1782,15 @@ function celebrate(title, sub) {
   setTimeout(() => { box.remove(); overlay.remove(); }, 4000);
 }
 
+// --------- service worker (PWA) ---------
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(err => {
+      console.warn("SW registration failed:", err);
+    });
+  });
+}
+
 // --------- boot ---------
 applySettings();
 const startTab = state.currentView.tab && document.getElementById("tab-" + state.currentView.tab) ? state.currentView.tab : "dashboard";

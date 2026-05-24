@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFD9B0"/>
+      <stop offset="55%" stop-color="#E8896B"/>
+      <stop offset="100%" stop-color="#9B7CA8"/>
+    </linearGradient>
+    <radialGradient id="lan" cx="0.5" cy="0.42" r="0.6">
+      <stop offset="0%" stop-color="#FFF1C2"/>
+      <stop offset="55%" stop-color="#F4B860"/>
+      <stop offset="100%" stop-color="#D88656"/>
+    </radialGradient>
+    <radialGradient id="bloom" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#FFE3A6" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#FFE3A6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Full-canvas background so it renders nicely under any mask -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Bloom halo behind the lantern -->
+  <circle cx="256" cy="280" r="220" fill="url(#bloom)"/>
+
+  <!-- Hanging string -->
+  <line x1="256" y1="120" x2="256" y2="155" stroke="#2A2620" stroke-width="4" stroke-linecap="round"/>
+  <rect x="236" y="108" width="40" height="14" fill="#2A2620" rx="3"/>
+
+  <!-- Lantern body -->
+  <ellipse cx="256" cy="290" rx="120" ry="155" fill="url(#lan)"/>
+
+  <!-- Lantern frame strips -->
+  <rect x="138" y="240" width="236" height="6" fill="#2A2620" opacity="0.35" rx="3"/>
+  <rect x="150" y="320" width="212" height="5" fill="#2A2620" opacity="0.25" rx="2"/>
+  <rect x="166" y="390" width="180" height="4" fill="#2A2620" opacity="0.2" rx="2"/>
+
+  <!-- Base -->
+  <rect x="216" y="438" width="80" height="14" fill="#2A2620" opacity="0.55" rx="3"/>
+  <rect x="240" y="448" width="32" height="14" fill="#2A2620" opacity="0.5" rx="2"/>
+</svg>

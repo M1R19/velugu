@@ -1,0 +1,21 @@
+{
+  "name": "Velugu — Light up Telugu",
+  "short_name": "Velugu",
+  "description": "A cozy 30-day spoken-Telugu learning app",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBF6EE",
+  "theme_color": "#E8896B",
+  "categories": ["education", "lifestyle"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
