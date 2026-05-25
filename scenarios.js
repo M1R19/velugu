@@ -11,6 +11,7 @@ const SCENARIOS = [
     desc: "Your first stop. Order tea, ask the price, leave with a smile.",
     npc: { name: "Ravi anna", initial: "ర", color: "#7DA88A" },
     estMinutes: 2,
+    interests: ["food", "travel"],
     turns: [
       {
         type: "npc",
@@ -75,6 +76,7 @@ const SCENARIOS = [
     desc: "Pick out a kilo, ask the price, and bargain just a little.",
     npc: { name: "Lakshmi auntie", initial: "ల", color: "#D88FA0" },
     estMinutes: 3,
+    interests: ["food"],
     turns: [
       {
         type: "npc",
@@ -146,6 +148,7 @@ const SCENARIOS = [
     desc: "Wave one down, name your stop, agree a price.",
     npc: { name: "Auto driver", initial: "ఆ", color: "#F4B860" },
     estMinutes: 2,
+    interests: ["travel", "work"],
     turns: [
       {
         type: "npc",
@@ -209,6 +212,7 @@ const SCENARIOS = [
     desc: "Polite greeting, accept tea, compliment the home.",
     npc: { name: "Saraswati amma", initial: "స", color: "#D88FA0" },
     estMinutes: 3,
+    interests: ["family", "romance"],
     turns: [
       {
         type: "npc",
@@ -271,6 +275,7 @@ const SCENARIOS = [
     desc: "Ask a stranger for directions to the train station.",
     npc: { name: "A kind stranger", initial: "?", color: "#B8A4D4" },
     estMinutes: 2,
+    interests: ["travel", "curious"],
     turns: [
       {
         type: "choice",

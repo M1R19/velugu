@@ -1161,6 +1161,147 @@ select, input[type="range"] {
 }
 
 /* ============================================================
+   "For you" badge (interest match)
+   ============================================================ */
+.for-you-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--amber), var(--primary));
+  color: white;
+  letter-spacing: 0.4px;
+  vertical-align: middle;
+}
+
+/* ============================================================
+   Treasure envelope (variable reward)
+   ============================================================ */
+.treasure-overlay {
+  position: fixed; inset: 0;
+  background: rgba(20, 15, 10, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  animation: fade-in 0.35s ease-out;
+}
+.treasure-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px 28px;
+  max-width: 440px;
+  width: 100%;
+  position: relative;
+  box-shadow: var(--shadow-lg);
+  animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+}
+.treasure-close {
+  position: absolute;
+  top: 12px; right: 16px;
+  background: transparent;
+  border: 0;
+  font-size: 24px;
+  color: var(--muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+}
+.treasure-close:hover { color: var(--text); }
+
+.treasure-envelope {
+  position: relative;
+  width: 160px;
+  height: 110px;
+  margin: 12px auto 14px;
+  background: linear-gradient(135deg, var(--primary), var(--amber));
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  box-shadow: 0 12px 36px rgba(232, 137, 107, 0.4);
+}
+.treasure-envelope:hover { transform: translateY(-2px) rotate(-1deg); }
+.treasure-flap {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, var(--primary-hover), var(--primary));
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform-origin: top center;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.treasure-envelope.opened .treasure-flap {
+  transform: rotateX(-180deg);
+}
+.treasure-icon {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 38px;
+  opacity: 0;
+  transition: opacity 0.4s ease 0.3s;
+}
+.treasure-envelope.opened .treasure-icon {
+  opacity: 1;
+  animation: gentle-float 3s ease-in-out infinite;
+}
+.treasure-tap-hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+.treasure-content {
+  animation: fade-in 0.5s ease-out;
+}
+.treasure-type {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.treasure-te {
+  font-family: var(--te-font);
+  font-size: 24px;
+  color: var(--text);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.treasure-tr {
+  font-family: var(--display);
+  font-size: 17px;
+  color: var(--primary);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.treasure-en {
+  font-style: italic;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+.treasure-note {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  margin-bottom: 18px;
+  text-align: left;
+}
+.treasure-actions {
+  display: flex; gap: 10px; justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
    Confetti / Celebration
    ============================================================ */
 .celebrate-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 200; overflow: hidden; }

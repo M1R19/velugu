@@ -23,7 +23,9 @@ const defaultState = {
   todayMoodDate: null,      // iso date string
   scenariosDone: {},        // scenarioId -> { completedAt, choices: [] }
   notifyEnabled: false,     // user opted in to soft reminders
-  lastNudgeDate: null       // last date we surfaced a re-engagement notification
+  lastNudgeDate: null,      // last date we surfaced a re-engagement notification
+  unlockedTreasures: [],    // ids of surprise envelopes the user has opened
+  lastSurpriseDate: null    // ensures at most one surprise per day
 };
 
 // ============================================================
@@ -1113,7 +1115,18 @@ function buildDecksForWeek() {
   });
 }
 
-const DECKS = buildDecksForWeek();
+const WEEKLY_DECKS = buildDecksForWeek();
+
+// Decks shown to the user = personalised interest packs first, then weekly.
+function getDecks() {
+  const personal = (state.interests || [])
+    .map(i => INTEREST_PACKS[i])
+    .filter(Boolean)
+    .map(p => ({ id: p.id, label: p.label, items: buildInterestDeck(p) }))
+    .filter(p => p.items.length >= 4);
+  return [...personal, ...WEEKLY_DECKS];
+}
+const DECKS = WEEKLY_DECKS; // legacy alias (unused after this refactor)
 
 function shuffle(arr) {
   const a = arr.slice();
@@ -1178,7 +1191,7 @@ function openPracticeMode(id) {
 
 function deckPicker(host, currentId, onPick) {
   const picker = el("div", { class: "deck-picker" });
-  DECKS.forEach(d => {
+  getDecks().forEach(d => {
     const c = el("button", {
       class: "chip" + (d.id === currentId ? " active" : ""),
       onclick: () => onPick(d.id)
@@ -1188,10 +1201,10 @@ function deckPicker(host, currentId, onPick) {
   host.appendChild(picker);
 }
 
-function getDeck(id) { return DECKS.find(d => d.id === id) || DECKS[0]; }
+function getDeck(id) { const all = getDecks(); return all.find(d => d.id === id) || all[0]; }
 
 // --------- FLASHCARDS ---------
-function renderFlashcards(host, deckId = "w1") {
+function renderFlashcards(host, deckId = getDecks()[0]?.id || "w1") {
   const head = el("div", { class: "practice-head" });
   head.appendChild(el("h2", {}, "🃏 Flashcards"));
   host.appendChild(head);
@@ -1245,7 +1258,7 @@ function renderFlashcards(host, deckId = "w1") {
 }
 
 // --------- LISTEN & PICK (hear Telugu, pick English meaning) ---------
-function renderListenPick(host, deckId = "w1") {
+function renderListenPick(host, deckId = getDecks()[0]?.id || "w1") {
   const head = el("div", { class: "practice-head" });
   head.appendChild(el("h2", {}, "👂 Listen & Pick"));
   const scoreTag = el("div", { class: "score-tag" }, "0 / 0");
@@ -1313,7 +1326,7 @@ function renderListenPick(host, deckId = "w1") {
 }
 
 // --------- SAY IT (see English, speak Telugu with mic grading) ---------
-function renderSayIt(host, deckId = "w1", customPool = null, title = "🗣️ Say It") {
+function renderSayIt(host, deckId = getDecks()[0]?.id || "w1", customPool = null, title = "🗣️ Say It") {
   const head = el("div", { class: "practice-head" });
   head.appendChild(el("h2", {}, title));
   const status = el("div", { class: "score-tag" }, SR_SUPPORTED ? "🎤 mic ready" : "🎤 not supported");
@@ -1454,7 +1467,7 @@ function renderSayIt(host, deckId = "w1", customPool = null, title = "🗣️ Sa
 }
 
 // --------- MATCH PAIRS (English ↔ Romanised Telugu) ---------
-function renderMatchPairs(host, deckId = "w1") {
+function renderMatchPairs(host, deckId = getDecks()[0]?.id || "w1") {
   const head = el("div", { class: "practice-head" });
   head.appendChild(el("h2", {}, "🧩 Match Pairs"));
   const moves = el("div", { class: "score-tag" }, "0 moves");
@@ -1571,6 +1584,14 @@ function setupMoodBar() {
 // ============================================================
 // SCENARIOS
 // ============================================================
+function scenarioMatchScore(s) {
+  if (!state.interests || !state.interests.length) return 0;
+  if (!s.interests) return 0;
+  let hits = 0;
+  for (const i of s.interests) if (state.interests.includes(i)) hits++;
+  return hits;
+}
+
 function renderScenariosHub() {
   const v = document.getElementById("scenarios-view");
   v.innerHTML = "";
@@ -1578,15 +1599,31 @@ function renderScenariosHub() {
   v.appendChild(el("p", { class: "subtle" },
     "Short interactive scenes. Pick a place — every choice you make is something you might really say."));
 
+  // Sort: matching interests first, then unplayed, then the rest.
+  const sorted = SCENARIOS.slice().sort((a, b) => {
+    const scoreA = scenarioMatchScore(a);
+    const scoreB = scenarioMatchScore(b);
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    const aDone = !!state.scenariosDone[a.id];
+    const bDone = !!state.scenariosDone[b.id];
+    return Number(aDone) - Number(bDone);
+  });
+
   const hub = el("div", { class: "scenarios-hub" });
-  SCENARIOS.forEach(s => {
+  sorted.forEach(s => {
     const done = !!state.scenariosDone[s.id];
+    const match = scenarioMatchScore(s) > 0;
     const card = el("div", { class: "scenario-card", onclick: () => openScenario(s.id) });
     const icon = el("div", { class: "scenario-icon" }, s.icon);
     card.appendChild(icon);
     const body = el("div");
     body.appendChild(el("div", { class: "scenario-loc" }, s.location));
-    body.appendChild(el("h3", {}, s.title));
+    const h = el("h3", {}, s.title);
+    if (match) {
+      const badge = el("span", { class: "for-you-badge" }, "✨ for you");
+      h.appendChild(badge);
+    }
+    body.appendChild(h);
     body.appendChild(el("div", { class: "scenario-desc" }, s.desc));
     const meta = el("div", { class: "scenario-meta" });
     meta.appendChild(el("span", {}, `~${s.estMinutes} min · ${s.npc.name}`));
@@ -1596,6 +1633,110 @@ function renderScenariosHub() {
     hub.appendChild(card);
   });
   v.appendChild(hub);
+}
+
+// ============================================================
+// INTEREST PACKS — curated phrase decks per interest
+// ============================================================
+const INTEREST_PACKS = {
+  travel: {
+    id: "i-travel", label: "✈️ On the Road", interest: "travel",
+    phraseKeys: [
+      "mīru ekkaḍa uṇṭāru?", "mīru ekkaḍi nuṇḍi?",
+      "___ ekkaḍa undi?", "enta dūram?", "daggaragā undā?",
+      "nērugā veḷḷaṇḍi", "eḍama vaipu tiragaṇḍi", "kuḍi vaipu tiragaṇḍi",
+      "āṭō", "bassu", "railu", "ṭyāksī",
+      "nannu ___ ki tīsukoṇṭāru", "___ ki enta?",
+      "mīṭaru veyyaṇḍi", "ikkaḍa āpaṇḍi", "konchem āgaṇḍi",
+      "mellagā naḍapaṇḍi", "nēnu tappipōyānu", "rēpu vastānu"
+    ]
+  },
+  food: {
+    id: "i-food", label: "🍛 Food & Tea", interest: "food",
+    phraseKeys: [
+      "annam", "pappu", "kūra", "perugu", "chapātī",
+      "chai", "kāphī", "nīḷḷu", "pālu", "guḍḍu",
+      "nāku ākali", "nāku dāham", "menu ivvaṇḍi",
+      "idi rucigā undi", "kāram takkuva", "billu ivvaṇḍi",
+      "nāku idi kāvāli", "nāku idi vaddu"
+    ]
+  },
+  family: {
+    id: "i-family", label: "👪 Family & Home", interest: "family",
+    phraseKeys: [
+      "amma", "nānna", "annayya", "akka", "tammuḍu", "chelli",
+      "koḍuku", "kūturu", "bhartā", "bhārya",
+      "mīku annāchellelu unnārā?", "nāku okka tammuḍu uṇḍu",
+      "illu", "gadi", "vanṭa illu",
+      "lōpaliki raṇḍi", "kūrchōṇḍi", "bāthrūm ekkaḍa?"
+    ]
+  },
+  work: {
+    id: "i-work", label: "💼 Work & Phone", interest: "work",
+    phraseKeys: [
+      "mīru ēmi chēstāru?", "nēnu pani chēstānu",
+      "nēnu vidyārthi", "nēnu upādhyāyuḍini",
+      "nēnu iñjinīr-ni", "nēnu ḍākṭaruni", "nēnu IT lō pani chēstānu",
+      "āphisu", "kampenī", "yajamāni",
+      "halō", "evaru?", "mī namberu enta?",
+      "tarvāta phōnu chēstānu", "nāku messāj paṅpiṇchaṇḍi",
+      "peddagā māṭlāḍaṇḍi", "konchem āgaṇḍi"
+    ]
+  },
+  romance: {
+    id: "i-romance", label: "❤️ Sweet Things", interest: "romance",
+    phraseKeys: [
+      "namaskāram", "mī pēru ēmiṭi?", "nā pēru ___",
+      "mimmalni kalavaḍam santhōsham", "nēnu kūḍā",
+      "mīku ishṭamā?", "nāku ___ chālā ishṭam",
+      "chālā bāgundi", "ad'bhutam",
+      "nēnu santhōshamgā unnānu", "mīru bāgunnārā?",
+      "chinta cheyyakaṇḍi", "malli kalusukundām"
+    ]
+  },
+  film: {
+    id: "i-film", label: "🎬 Films & Stories", interest: "film",
+    phraseKeys: [
+      "nāku saṅgītam ishṭam", "nēnu cinemālu chūstānu",
+      "nēnu pāṭalu vintānu", "nēnu pustakālu chaduvutānu",
+      "ī cinemā chūshārā?", "chālā bāgundi", "ad'bhutam",
+      "borgā undi", "ēdi best?",
+      "nēnu santhōshamgā unnānu", "nāku ishṭam"
+    ]
+  },
+  music: {
+    id: "i-music", label: "🎵 Songs & Sounds", interest: "music",
+    phraseKeys: [
+      "nāku saṅgītam ishṭam", "nēnu pāṭalu vintānu",
+      "chālā bāgundi", "ad'bhutam", "ēdi best?",
+      "nāku ishṭam", "borgā undi"
+    ]
+  },
+  curious: {
+    id: "i-curious", label: "✨ Just Curious", interest: "curious",
+    phraseKeys: [
+      "namaskāram", "dhanyavādālu", "kṣaminchaṇḍi",
+      "ēmiṭi?", "ekkaḍa?", "eppuḍu?", "enduku?", "elā?",
+      "nāku artham ayyindi", "nāku artham kāledu",
+      "mellagā cheppaṇḍi", "marokasāri cheppaṇḍi",
+      "mīku iṅglīsh vacchā?", "dāni artham ēmiṭi?"
+    ]
+  }
+};
+
+function buildInterestDeck(packDef) {
+  const idx = getPhraseIndex();
+  const items = [];
+  const seen = new Set();
+  packDef.phraseKeys.forEach(k => {
+    const key = k.toLowerCase().trim();
+    const phrase = idx[key];
+    if (phrase && !seen.has(key)) {
+      items.push(phrase);
+      seen.add(key);
+    }
+  });
+  return items;
 }
 
 function openScenario(id) {
@@ -1862,7 +2003,7 @@ function startOnboarding() {
         saveState();
         overlay.style.display = "none";
         renderDashboard();
-        celebrate("Welcome to Velugu!", `${CHARACTERS[draft.character].name} is excited to meet you.`);
+        celebrate("Welcome to Velugu!", `${CHARACTERS[draft.character].name} is excited to meet you.`, { skipSurprise: true });
       };
     }
   }
@@ -1870,8 +2011,77 @@ function startOnboarding() {
   render();
 }
 
+// ============================================================
+// SURPRISE ENVELOPES — variable rewards (~1 in 3, max once per day)
+// ============================================================
+function maybeShowSurprise() {
+  if (typeof TREASURES === "undefined" || !TREASURES.length) return;
+  const today = isoDate();
+  if (state.lastSurpriseDate === today) return; // once per day
+  if (Math.random() > 0.33) return;             // ~1 in 3 chance
+
+  const seen = state.unlockedTreasures || [];
+  const fresh = TREASURES.filter(t => !seen.includes(t.id));
+  const pool = fresh.length > 0 ? fresh : TREASURES;
+  const treasure = pool[Math.floor(Math.random() * pool.length)];
+
+  state.unlockedTreasures = [...new Set([...seen, treasure.id])];
+  state.lastSurpriseDate = today;
+  saveState();
+  // Tiny delay so it lands AFTER the celebrate confetti
+  setTimeout(() => showTreasureEnvelope(treasure), 600);
+}
+
+function showTreasureEnvelope(t) {
+  const overlay = document.createElement("div");
+  overlay.className = "treasure-overlay";
+  overlay.innerHTML = `
+    <div class="treasure-card" role="dialog" aria-label="A small gift">
+      <button class="treasure-close" aria-label="Close">×</button>
+      <div class="treasure-envelope">
+        <div class="treasure-flap"></div>
+        <div class="treasure-icon">${t.icon || "✨"}</div>
+      </div>
+      <div class="treasure-tap-hint">Tap to open</div>
+      <div class="treasure-content" style="display:none">
+        <div class="treasure-type">${t.title || "A small gift"}</div>
+        <div class="treasure-te te">${t.te || ""}</div>
+        <div class="treasure-tr">${t.tr || ""}</div>
+        <div class="treasure-en">"${t.en || ""}"</div>
+        ${t.note ? `<div class="treasure-note">${t.note}</div>` : ""}
+        <div class="treasure-actions">
+          <button class="btn btn-ghost treasure-hear">🔊 Hear it</button>
+          <button class="btn btn-primary treasure-done">Beautiful</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const card = overlay.querySelector(".treasure-card");
+  const envelope = overlay.querySelector(".treasure-envelope");
+  const hint = overlay.querySelector(".treasure-tap-hint");
+  const content = overlay.querySelector(".treasure-content");
+
+  function open() {
+    if (envelope.classList.contains("opened")) return;
+    envelope.classList.add("opened");
+    hint.style.display = "none";
+    setTimeout(() => {
+      envelope.style.display = "none";
+      content.style.display = "block";
+      content.scrollIntoView({ block: "nearest" });
+    }, 700);
+  }
+
+  envelope.addEventListener("click", open);
+  card.querySelector(".treasure-hear")?.addEventListener("click", () => speak(t.te));
+  card.querySelector(".treasure-done")?.addEventListener("click", () => overlay.remove());
+  overlay.querySelector(".treasure-close").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+}
+
 // --------- Celebration / Confetti ---------
-function celebrate(title, sub) {
+function celebrate(title, sub, opts = {}) {
   const overlay = document.createElement("div");
   overlay.className = "celebrate-overlay";
   const colors = ["#E8896B", "#F4B860", "#7DA88A", "#D88FA0", "#B8A4D4", "#FFD4A3"];
@@ -1892,6 +2102,7 @@ function celebrate(title, sub) {
   document.body.appendChild(box);
   box.addEventListener("click", () => { box.remove(); overlay.remove(); });
   setTimeout(() => { box.remove(); overlay.remove(); }, 4000);
+  if (!opts.skipSurprise) maybeShowSurprise();
 }
 
 // --------- service worker (PWA) ---------
