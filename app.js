@@ -31,7 +31,8 @@ const defaultState = {
   streakFreezesUsed: {},    // monthKey ("2026-05") -> count, max 3/month
   installBannerDismissed: false,
   favourites: [],           // array of phrase te-keys
-  firstTimeWelcomeShown: false
+  firstTimeWelcomeShown: false,
+  soundFx: "off"            // "off" | "soft" | "on"
 };
 
 // ============================================================
@@ -590,7 +591,7 @@ function buildBottomNav() {
     btn.className = "nav-bottom-btn";
     btn.dataset.tab = item.id;
     btn.innerHTML = `<span class="nav-icon">${icon(item.iconKey, 22)}</span><span class="nav-label">${item.label}</span>`;
-    btn.addEventListener("click", () => { haptic(6); switchTab(item.id); });
+    btn.addEventListener("click", () => { haptic(6); sfx("tap"); switchTab(item.id); });
     host.appendChild(btn);
   });
 }
@@ -618,7 +619,7 @@ function switchTab(name) {
   window.scrollTo(0, 0);
 }
 document.querySelectorAll(".nav-btn").forEach(btn => {
-  btn.addEventListener("click", () => { haptic(6); switchTab(btn.dataset.tab); });
+  btn.addEventListener("click", () => { haptic(6); sfx("tap"); switchTab(btn.dataset.tab); });
 });
 // NOTE: buildBottomNav() is called from the boot section (after ICONS is defined).
 
@@ -664,6 +665,75 @@ function icon(name, size = 20, extraClass = "") {
 // Light haptic feedback (silently no-ops where unsupported)
 function haptic(ms = 8) {
   try { navigator.vibrate?.(ms); } catch (e) {}
+}
+
+// ------------ Sound effects (Web Audio API, programmatic) ------------
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!state.soundFx || state.soundFx === "off") return null;
+  if (!_audioCtx) {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      _audioCtx = new AC();
+    } catch (e) { return null; }
+  }
+  if (_audioCtx.state === "suspended") {
+    _audioCtx.resume().catch(() => {});
+  }
+  return _audioCtx;
+}
+
+function playTone(freq, duration, opts = {}) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = opts.type || "sine";
+  osc.frequency.value = freq;
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  const now = ctx.currentTime;
+  const baseVol = opts.vol != null ? opts.vol : 0.12;
+  const vol = baseVol * (state.soundFx === "soft" ? 0.5 : 1);
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(vol, now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  osc.start(now);
+  osc.stop(now + duration + 0.05);
+}
+
+function sfx(type) {
+  if (!state.soundFx || state.soundFx === "off") return;
+  switch (type) {
+    case "correct":
+      playTone(523.25, 0.12);                              // C5
+      setTimeout(() => playTone(659.25, 0.18), 70);        // E5
+      break;
+    case "wrong":
+      playTone(392.00, 0.14, { vol: 0.09 });               // G4
+      setTimeout(() => playTone(329.63, 0.18, { vol: 0.09 }), 90); // E4
+      break;
+    case "tap":
+      playTone(660, 0.04, { type: "triangle", vol: 0.06 });
+      break;
+    case "lit":
+      playTone(1318.51, 0.09, { type: "sine", vol: 0.08 });  // E6
+      setTimeout(() => playTone(1760.00, 0.12, { type: "sine", vol: 0.07 }), 55); // A6
+      break;
+    case "celebrate":
+      playTone(523.25, 0.10);                              // C5
+      setTimeout(() => playTone(659.25, 0.10), 90);        // E5
+      setTimeout(() => playTone(783.99, 0.22), 180);       // G5
+      break;
+    case "select":
+      playTone(587.33, 0.05, { type: "triangle", vol: 0.05 }); // D5
+      break;
+    case "envelope":
+      playTone(659.25, 0.10, { type: "triangle", vol: 0.08 }); // E5
+      setTimeout(() => playTone(880, 0.20, { type: "sine", vol: 0.08 }), 100); // A5
+      break;
+  }
 }
 
 function el(tag, attrs = {}, ...children) {
@@ -865,6 +935,8 @@ function renderDiyaRow(region, nextDay) {
       class: "diya" + (lit ? " lit" : "") + (current ? " current" : "") + (locked ? " locked" : ""),
       onclick: () => {
         if (locked) return;
+        haptic(8);
+        sfx(lit ? "select" : "lit");
         state.currentView.day = d;
         switchTab("lesson");
       },
@@ -923,6 +995,7 @@ function renderRegions() {
 
 document.getElementById("continue-btn").addEventListener("click", () => {
   haptic(8);
+  sfx("tap");
   state.currentView.day = Math.min(state.unlockedDay, LESSONS.length);
   switchTab("lesson");
 });
@@ -1035,10 +1108,12 @@ function toggleFavourite(p) {
   state.favourites = state.favourites || [];
   const key = phraseKey(p);
   const i = state.favourites.indexOf(key);
-  if (i >= 0) state.favourites.splice(i, 1);
+  const wasOn = i >= 0;
+  if (wasOn) state.favourites.splice(i, 1);
   else state.favourites.push(key);
   saveState();
   haptic(8);
+  sfx(wasOn ? "select" : "lit");
 }
 
 function makeFavBtn(p) {
@@ -1101,6 +1176,7 @@ function renderQuiz(day, questions) {
         answers[qi] = oi;
         const isCorrect = oi === q.a;
         haptic(isCorrect ? 8 : [10, 40, 10]);
+        sfx(isCorrect ? "correct" : "wrong");
         if (isCorrect) { btn.classList.add("correct"); correctSet[qi] = true; }
         else {
           btn.classList.add("wrong"); correctSet[qi] = false;
@@ -1225,6 +1301,7 @@ function renderSettings() {
   document.querySelectorAll(".chip[data-font]").forEach(c => c.classList.toggle("active", c.dataset.font === state.font));
   document.querySelectorAll(".chip[data-translit]").forEach(c => c.classList.toggle("active", c.dataset.translit === state.showScript));
   document.querySelectorAll(".chip[data-character]").forEach(c => c.classList.toggle("active", c.dataset.character === state.character));
+  document.querySelectorAll(".chip[data-sound]").forEach(c => c.classList.toggle("active", c.dataset.sound === (state.soundFx || "off")));
   document.querySelectorAll(".chip[data-notify]").forEach(c => c.classList.toggle("active", c.dataset.notify === (state.notifyEnabled ? "on" : "off")));
   const status = document.getElementById("notify-status");
   if (status) {
@@ -1269,6 +1346,14 @@ document.querySelectorAll(".chip[data-character]").forEach(c =>
     saveState();
     renderSettings();
     if (state.currentView.tab === "dashboard") renderDashboard();
+  }));
+document.querySelectorAll(".chip[data-sound]").forEach(c =>
+  c.addEventListener("click", () => {
+    state.soundFx = c.dataset.sound;
+    saveState();
+    renderSettings();
+    // Preview the new setting (correct chime) so the user hears what they picked.
+    if (state.soundFx !== "off") sfx("correct");
   }));
 document.querySelectorAll(".chip[data-notify]").forEach(c =>
   c.addEventListener("click", async () => {
@@ -2763,6 +2848,8 @@ function showTreasureEnvelope(t) {
     if (envelope.classList.contains("opened")) return;
     envelope.classList.add("opened");
     hint.style.display = "none";
+    haptic(10);
+    sfx("envelope");
     setTimeout(() => {
       envelope.style.display = "none";
       content.style.display = "block";
@@ -2799,6 +2886,7 @@ function celebrate(title, sub, opts = {}) {
   document.body.appendChild(box);
   box.addEventListener("click", () => { box.remove(); overlay.remove(); });
   setTimeout(() => { box.remove(); overlay.remove(); }, 4000);
+  sfx("celebrate");
   if (!opts.skipSurprise) maybeShowSurprise();
 }
 
