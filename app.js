@@ -40,7 +40,7 @@ const CHARACTERS = {
       ],
       afternoon: [
         "The market is loud today. Want to come along?",
-        "Let's add one more lantern.",
+        "Let's add one more diya.",
         "Afternoon's a nice time to learn something tiny."
       ],
       evening: [
@@ -55,11 +55,11 @@ const CHARACTERS = {
       ],
       streak: [
         "{n} days in a row. I'm proud.",
-        "{n}-day streak — your lanterns are beautiful.",
+        "{n}-day streak — your diyas are beautiful.",
         "You're becoming part of the village."
       ],
       first: [
-        "Glad you came. Let's light your first lantern.",
+        "Glad you came. Let's light your first diya.",
         "Don't worry about getting it right. Just say something."
       ]
     }
@@ -90,7 +90,7 @@ const CHARACTERS = {
       ],
       streak: [
         "{n} days! You're becoming part of our family.",
-        "Look at your lanterns — {n} days of light.",
+        "Look at your diyas — {n} days of light.",
         "Amma is happy to see you again."
       ],
       first: [
@@ -110,7 +110,7 @@ const CHARACTERS = {
       ],
       afternoon: [
         "Hey, free for a quick session?",
-        "Bro, let's get one lantern lit.",
+        "Bro, let's get one diya lit.",
         "Quick break, quick lesson."
       ],
       evening: [
@@ -527,7 +527,7 @@ function renderDashboard() {
   // CTA
   const ctaLabel = document.getElementById("cta-label");
   if (completed === total) ctaLabel.textContent = "Review today's phrases";
-  else if (completed === 0) ctaLabel.textContent = "Light your first lantern";
+  else if (completed === 0) ctaLabel.textContent = "Light your first diya";
   else ctaLabel.textContent = `Continue: ${lesson.topic}`;
 
   // Streak chip
@@ -539,13 +539,13 @@ function renderDashboard() {
     streakChip.style.display = "none";
   }
 
-  // Current region lantern path
+  // Current region diya path
   const region = getRegionForDay(nextDay);
   const lit = LESSONS.slice(region.days[0] - 1, region.days[1]).filter((_, i) => state.completed[region.days[0] + i]).length;
   const size = region.days[1] - region.days[0] + 1;
   document.getElementById("path-title").textContent = region.name;
   document.getElementById("path-meta").textContent = `${lit} of ${size} lit`;
-  renderLanternRow(region, nextDay);
+  renderDiyaRow(region, nextDay);
 
   // Side cards
   const dueCount = srsDueCards().length;
@@ -564,16 +564,27 @@ function renderDashboard() {
   }
 }
 
-function renderLanternRow(region, nextDay) {
-  const row = document.getElementById("lantern-row");
+function diyaSvgMarkup() {
+  // Small diya: clay bowl + wick + flame + glow halo. References shared gradient defs.
+  return `<svg class="diya-icon" viewBox="0 0 32 38" xmlns="http://www.w3.org/2000/svg">
+    <circle class="d-glow" cx="16" cy="12" r="13"/>
+    <path class="d-bowl" d="M3 26 L29 26 L25 36 L7 36 Z"/>
+    <ellipse class="d-oil" cx="16" cy="26" rx="13" ry="1.2"/>
+    <rect class="d-wick" x="15" y="20" width="2" height="6"/>
+    <path class="d-flame" d="M16 5 Q12 13 16 21 Q20 13 16 5"/>
+  </svg>`;
+}
+
+function renderDiyaRow(region, nextDay) {
+  const row = document.getElementById("diya-row");
   if (!row) return;
   row.innerHTML = "";
   for (let d = region.days[0]; d <= region.days[1]; d++) {
     const lit = !!state.completed[d];
     const current = d === nextDay && !lit;
     const locked = d > state.unlockedDay;
-    const lantern = el("div", {
-      class: "lantern" + (lit ? " lit" : "") + (current ? " current" : "") + (locked ? " locked" : ""),
+    const diya = el("div", {
+      class: "diya" + (lit ? " lit" : "") + (current ? " current" : "") + (locked ? " locked" : ""),
       onclick: () => {
         if (locked) return;
         state.currentView.day = d;
@@ -581,9 +592,10 @@ function renderLanternRow(region, nextDay) {
       },
       title: `Day ${d}: ${LESSONS[d - 1] ? LESSONS[d - 1].topic : ""}`
     });
-    lantern.appendChild(el("div", { class: "lantern-bulb" }));
-    lantern.appendChild(el("div", { class: "lantern-day" }, `Day ${d}`));
-    row.appendChild(lantern);
+    const svgWrap = el("div", { html: diyaSvgMarkup() });
+    diya.appendChild(svgWrap.firstChild);
+    diya.appendChild(el("div", { class: "diya-day" }, `Day ${d}`));
+    row.appendChild(diya);
   }
 }
 
@@ -769,7 +781,7 @@ function renderQuiz(day, questions) {
   const block = el("div", { class: "quiz-block" });
   block.appendChild(el("h3", {}, `Quiz — Day ${day}`));
   block.appendChild(el("p", { class: "subtle" },
-    "Take your time. Pick the warmest way to say each one — ≥60% lights this lantern."));
+    "Take your time. Pick the warmest way to say each one — ≥60% lights this diya."));
 
   const correctSet = {};
   const answers = {};
@@ -1612,16 +1624,13 @@ function startOnboarding() {
     mood: "good"
   };
 
-  function lanternSvg() {
-    return `<svg class="onboard-lantern" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <defs><radialGradient id="ol" cx="0.5" cy="0.4" r="0.7">
-        <stop offset="0%" stop-color="#FFE3A6"/><stop offset="60%" stop-color="#F4B860"/><stop offset="100%" stop-color="#E8896B"/>
-      </radialGradient></defs>
-      <rect x="46" y="8" width="8" height="6" fill="#2A2620" rx="1"/>
-      <line x1="50" y1="14" x2="50" y2="20" stroke="#2A2620" stroke-width="2"/>
-      <ellipse cx="50" cy="55" rx="30" ry="38" fill="url(#ol)"/>
-      <rect x="20" y="50" width="60" height="3" fill="#2A2620" opacity="0.3"/>
-      <rect x="22" y="60" width="56" height="2" fill="#2A2620" opacity="0.2"/>
+  function diyaSvg() {
+    return `<svg class="onboard-diya" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="34" r="34" fill="url(#diya-glow)"/>
+      <path d="M50 10 Q40 30 50 54 Q60 30 50 10" fill="url(#diya-flame)" style="filter:drop-shadow(0 0 4px rgba(244,184,96,0.7))"/>
+      <rect x="48" y="50" width="4" height="10" fill="#2A2620"/>
+      <path d="M14 64 L86 64 L74 92 L26 92 Z" fill="url(#diya-clay)" stroke="#5A3318" stroke-width="2"/>
+      <ellipse cx="50" cy="64" rx="36" ry="3" fill="#1A1008" opacity="0.55"/>
     </svg>`;
   }
 
@@ -1639,10 +1648,10 @@ function startOnboarding() {
 
     if (step === 0) {
       card.innerHTML = `
-        ${lanternSvg()}
+        ${diyaSvg()}
         <div class="step-num">Welcome</div>
         <h2>Welcome to Velugu.</h2>
-        <p class="lead">A small world for learning Telugu — one lantern at a time. No quizzes to fear, no streaks to lose.</p>
+        <p class="lead">A small world for learning Telugu — one diya at a time. No quizzes to fear, no streaks to lose.</p>
         <div class="onboard-actions">
           <button class="cta-primary" id="ob-next">Begin</button>
         </div>
@@ -1724,7 +1733,7 @@ function startOnboarding() {
         <div class="onboard-grid" id="ob-mood"></div>
         <div class="onboard-actions">
           <button class="btn btn-ghost" id="ob-back">Back</button>
-          <button class="cta-primary" id="ob-next">Light my first lantern →</button>
+          <button class="cta-primary" id="ob-next">Light my first diya →</button>
         </div>
         ${dots(3, 4)}
       `;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="Velugu — a cozy 30-day spoken-Telugu learning app. Hear, repeat, earn lanterns. No script required." />
+  <meta name="description" content="Velugu — a cozy 30-day spoken-Telugu learning app. Hear, repeat, earn diyas. No script required." />
   <title>Velugu — light up Telugu</title>
 
   <!-- PWA -->
@@ -25,7 +25,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Velugu" />
   <meta property="og:title" content="Velugu — light up Telugu" />
-  <meta property="og:description" content="A cozy 30-day spoken-Telugu app. Hear, repeat, earn lanterns." />
+  <meta property="og:description" content="A cozy 30-day spoken-Telugu app. Hear, repeat, earn diyas." />
   <meta property="og:url" content="https://m1r19.github.io/velugu/" />
   <meta property="og:image" content="https://m1r19.github.io/velugu/og-image.png" />
   <meta property="og:image:width" content="1200" />
@@ -35,7 +35,7 @@
   <!-- Twitter card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Velugu — light up Telugu" />
-  <meta name="twitter:description" content="A cozy 30-day spoken-Telugu app. Hear, repeat, earn lanterns." />
+  <meta name="twitter:description" content="A cozy 30-day spoken-Telugu app. Hear, repeat, earn diyas." />
   <meta name="twitter:image" content="https://m1r19.github.io/velugu/og-image.png" />
   <meta name="twitter:image:alt" content="Velugu — light up Telugu" />
 
@@ -46,24 +46,36 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- Shared SVG gradient defs (referenced by inline diya SVGs across the app) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="diya-flame" x1="0.5" y1="0" x2="0.5" y2="1">
+        <stop offset="0%"  stop-color="#FFF1C2"/>
+        <stop offset="55%" stop-color="#F4B860"/>
+        <stop offset="100%" stop-color="#D88656"/>
+      </linearGradient>
+      <linearGradient id="diya-clay" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"  stop-color="#C97D4A"/>
+        <stop offset="100%" stop-color="#6B3F22"/>
+      </linearGradient>
+      <radialGradient id="diya-glow" cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0%"  stop-color="#FFE3A6" stop-opacity="0.85"/>
+        <stop offset="100%" stop-color="#FFE3A6" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+  </svg>
+
   <!-- Top bar -->
   <header class="topbar">
     <div class="brand">
       <div class="brand-mark" aria-hidden="true">
-        <!-- Lantern SVG -->
+        <!-- Diya SVG -->
         <svg width="36" height="36" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <radialGradient id="lanternGrad" cx="0.5" cy="0.4" r="0.7">
-              <stop offset="0%" stop-color="#FFE3A6"/>
-              <stop offset="60%" stop-color="#F4B860"/>
-              <stop offset="100%" stop-color="#E8896B"/>
-            </radialGradient>
-          </defs>
-          <rect x="46" y="8" width="8" height="6" fill="#2A2620" rx="1"/>
-          <line x1="50" y1="14" x2="50" y2="20" stroke="#2A2620" stroke-width="2"/>
-          <ellipse cx="50" cy="55" rx="30" ry="38" fill="url(#lanternGrad)"/>
-          <rect x="20" y="50" width="60" height="3" fill="#2A2620" opacity="0.3"/>
-          <rect x="22" y="60" width="56" height="2" fill="#2A2620" opacity="0.2"/>
+          <circle cx="50" cy="38" r="32" fill="url(#diya-glow)"/>
+          <path d="M50 12 Q40 32 50 56 Q60 32 50 12" fill="url(#diya-flame)"/>
+          <rect x="48" y="52" width="4" height="10" fill="#2A2620"/>
+          <path d="M14 64 L86 64 L74 92 L26 92 Z" fill="url(#diya-clay)" stroke="#5A3318" stroke-width="2"/>
+          <ellipse cx="50" cy="64" rx="36" ry="3" fill="#1A1008" opacity="0.55"/>
         </svg>
       </div>
       <div>
@@ -71,7 +83,7 @@
         <p class="brand-sub">light up Telugu</p>
       </div>
       <div id="streak-chip" class="streak-chip" style="display:none;">
-        <span class="lantern">🏮</span>
+        <span class="diya-emoji">🪔</span>
         <span id="streak-num">0</span>
       </div>
     </div>
@@ -120,7 +132,7 @@
           <h3 class="path-title" id="path-title">The Lane You Live On</h3>
           <span class="path-meta" id="path-meta">0 of 7 lit</span>
         </div>
-        <div class="lantern-row" id="lantern-row"></div>
+        <div class="diya-row" id="diya-row"></div>
       </div>
 
       <div class="side-cards">

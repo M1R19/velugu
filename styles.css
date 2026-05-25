@@ -145,8 +145,8 @@ html, body {
   margin-left: 12px;
   box-shadow: 0 2px 10px rgba(244, 184, 96, 0.4);
 }
-.streak-chip .lantern { animation: lantern-pulse 3s ease-in-out infinite; }
-@keyframes lantern-pulse {
+.streak-chip .diya-emoji { animation: diya-pulse 3s ease-in-out infinite; display: inline-block; }
+@keyframes diya-pulse {
   0%, 100% { opacity: 1; filter: drop-shadow(0 0 4px rgba(255, 220, 150, 0.8)); }
   50%      { opacity: 0.85; filter: drop-shadow(0 0 10px rgba(255, 220, 150, 1)); }
 }
@@ -280,7 +280,7 @@ h3.section-title { font-family: var(--display); font-size: 20px; margin: 32px 0 
 }
 
 /* ============================================================
-   Lantern path
+   Diya path
    ============================================================ */
 .path-wrap {
   background: var(--surface);
@@ -298,68 +298,66 @@ h3.section-title { font-family: var(--display); font-size: 20px; margin: 32px 0 
 .path-title { font-family: var(--display); font-size: 18px; margin: 0; font-weight: 500; }
 .path-meta  { font-size: 13px; color: var(--muted); }
 
-.lantern-row {
+.diya-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 4px;
   padding: 4px 0;
 }
-.lantern {
+.diya {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   cursor: pointer;
   padding: 6px 2px;
   border-radius: 12px;
   transition: background 0.2s;
 }
-.lantern:hover { background: var(--surface-2); }
-.lantern.locked { cursor: not-allowed; opacity: 0.4; }
-.lantern-bulb {
-  width: 28px; height: 36px;
-  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-  background: var(--surface-2);
-  border: 2px solid var(--border);
-  position: relative;
-  transition: all 0.3s ease;
+.diya:hover { background: var(--surface-2); }
+.diya.locked { cursor: not-allowed; opacity: 0.35; }
+
+.diya-icon { width: 32px; height: 38px; display: block; }
+.diya-icon .d-glow  { fill: transparent; transition: fill 0.4s; }
+.diya-icon .d-bowl  { fill: var(--surface-2); stroke: var(--border); stroke-width: 1.2; transition: all 0.4s; }
+.diya-icon .d-oil   { fill: var(--border); opacity: 0.6; transition: all 0.4s; }
+.diya-icon .d-wick  { fill: transparent; transition: fill 0.4s; }
+.diya-icon .d-flame { fill: transparent; opacity: 0; transition: all 0.4s; transform-origin: 16px 22px; transform-box: fill-box; }
+
+.diya.lit .d-glow  { fill: url(#diya-glow); }
+.diya.lit .d-bowl  { fill: url(#diya-clay); stroke: #5A3318; stroke-width: 1.4; }
+.diya.lit .d-oil   { fill: #1A1008; opacity: 0.55; }
+.diya.lit .d-wick  { fill: #2A2620; }
+.diya.lit .d-flame {
+  fill: url(#diya-flame);
+  opacity: 1;
+  filter: drop-shadow(0 0 3px rgba(244, 184, 96, 0.75));
+  animation: diya-flicker 1.8s ease-in-out infinite;
 }
-.lantern-bulb::after {
-  content: "";
-  position: absolute;
-  top: -6px; left: 50%; transform: translateX(-50%);
-  width: 6px; height: 6px;
-  background: var(--border);
-  border-radius: 2px;
+
+.diya.current .d-bowl { stroke: var(--primary); stroke-width: 2; }
+.diya.current .d-wick { fill: var(--primary); opacity: 0.6; }
+.diya.current .d-flame {
+  fill: var(--primary);
+  opacity: 0.55;
+  animation: diya-pending 2s ease-in-out infinite;
 }
-.lantern.lit .lantern-bulb {
-  background: linear-gradient(180deg, var(--amber), var(--primary));
-  border-color: var(--amber);
-  box-shadow:
-    0 0 14px rgba(244, 184, 96, 0.6),
-    0 0 28px rgba(244, 184, 96, 0.3),
-    inset 0 -4px 6px rgba(255, 255, 255, 0.3);
-  animation: lantern-glow 4s ease-in-out infinite;
+
+@keyframes diya-flicker {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(244,184,96,0.75)); transform: scaleY(1); }
+  35%      { filter: drop-shadow(0 0 6px rgba(244,184,96,1)) drop-shadow(0 0 12px rgba(244,184,96,0.5)); transform: scaleY(1.05); }
+  65%      { filter: drop-shadow(0 0 4px rgba(244,184,96,0.85)); transform: scaleY(0.97); }
 }
-@keyframes lantern-glow {
-  0%, 100% { box-shadow: 0 0 14px rgba(244, 184, 96, 0.6), 0 0 28px rgba(244, 184, 96, 0.3), inset 0 -4px 6px rgba(255, 255, 255, 0.3); }
-  50%      { box-shadow: 0 0 18px rgba(244, 184, 96, 0.9), 0 0 36px rgba(244, 184, 96, 0.5), inset 0 -4px 6px rgba(255, 255, 255, 0.4); }
+@keyframes diya-pending {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.85; }
 }
-.lantern.current .lantern-bulb {
-  background: white;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 4px var(--primary-soft);
-  animation: lantern-pending 2s ease-in-out infinite;
-}
-@keyframes lantern-pending {
-  0%, 100% { box-shadow: 0 0 0 4px var(--primary-soft); }
-  50%      { box-shadow: 0 0 0 8px var(--primary-soft); }
-}
-.lantern-day { font-size: 11px; color: var(--muted); }
-.lantern.lit .lantern-day { color: var(--primary); font-weight: 600; }
-.lantern.current .lantern-day { color: var(--primary); font-weight: 600; }
+
+.diya-day { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.diya.lit .diya-day { color: var(--primary); font-weight: 600; }
+.diya.current .diya-day { color: var(--primary); font-weight: 600; }
 
 /* ============================================================
    Side cards
@@ -1468,7 +1466,7 @@ select, input[type="range"] {
 }
 .onboard-dots .dot.active { background: var(--primary); width: 18px; border-radius: 3px; }
 
-.onboard-lantern {
+.onboard-diya {
   width: 80px; height: 80px;
   margin: 0 auto 20px;
   animation: gentle-float 4s ease-in-out infinite;

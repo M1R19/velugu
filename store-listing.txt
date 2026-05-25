@@ -15,12 +15,12 @@ GOOGLE PLAY STORE
 Velugu — Light up Telugu
 
 >>> Short description (max 80 chars)
-A cozy 30-day spoken-Telugu app. Hear, repeat, earn lanterns.
+A cozy 30-day spoken-Telugu app. Hear, repeat, earn diyas.
 
 >>> Full description (max 4000 chars)
 Velugu is a calm, cozy 30-day journey into spoken Telugu — designed for absolute beginners who just want to talk, not memorize the script.
 
-This isn't a quiz machine. It's a small village where every phrase you learn lights a lantern.
+This isn't a quiz machine. It's a small village where every phrase you learn lights a diya.
 
 WHAT YOU'LL DO
 
@@ -29,7 +29,7 @@ WHAT YOU'LL DO
 • Tap to hear native-sounding audio for any word
 • Use your mic to practise saying phrases out loud — get scored on pronunciation
 • Play through 5 branching scenario sims (chai stall, market, auto ride, family visit, asking directions)
-• Collect lanterns as you go. No streaks to fear, no guilt loops.
+• Collect diyas as you go. No streaks to fear, no guilt loops.
 
 THE CURRICULUM (30 days, 4 regions)
 
@@ -108,7 +108,7 @@ Velugu
 Light up Telugu
 
 >>> Promotional text (max 170 chars)
-A cozy 30-day spoken-Telugu app. Hear, repeat, earn lanterns. No script required, no streak guilt — just a small village to visit each day.
+A cozy 30-day spoken-Telugu app. Hear, repeat, earn diyas. No script required, no streak guilt — just a small village to visit each day.
 
 >>> Description (max 4000 chars)
 [reuse the Play Store full description above — it's already within limits and store-neutral]
@@ -140,7 +140,7 @@ Review notes: "This app is a complete on-device Telugu learning experience. No a
 TAGLINE OPTIONS (if you need others)
 ==============================================================
 1. A cozy 30-day journey into spoken Telugu.
-2. Light up Telugu — one lantern at a time.
+2. Light up Telugu — one diya at a time.
 3. Talk Telugu in 30 days. No script required.
 4. The cozy way to learn Telugu.
 5. Your village for learning Telugu.
@@ -150,7 +150,7 @@ ONE-LINER PITCHES (Twitter / press)
 ==============================================================
 For Twitter (≤280): "Velugu is a 30-day cozy Telugu app — English in, spoken Telugu out. No script, no streak guilt, no tracking. A small village you visit each day. m1r19.github.io/velugu"
 
-For a tagline plate: "Velugu — light up Telugu, one lantern at a time."
+For a tagline plate: "Velugu — light up Telugu, one diya at a time."
 
 ==============================================================
 END
