@@ -1913,6 +1913,61 @@ async function translateText(text, fromLang, toLang) {
   };
 }
 
+// Detect whether a string contains Telugu Unicode characters.
+function isTeluguScript(s) {
+  return /[ఀ-౿]/.test(s || "");
+}
+
+// Normalise romanised input for fuzzy matching (strip diacritics, punctuation, lowercase).
+function normaliseRomanised(s) {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")          // strip combining diacritics
+    .replace(/[āīūṅñṇḍṭṣśḷṛ]/g, c => ({
+      "ā":"a","ī":"i","ū":"u","ṅ":"n","ñ":"n","ṇ":"n",
+      "ḍ":"d","ṭ":"t","ṣ":"s","ś":"s","ḷ":"l","ṛ":"r"
+    }[c] || c))
+    .replace(/[^a-z\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Fuzzy match user-typed romanised text against our phrase index.
+// Returns top scoring matches above a noise floor.
+function fuzzyMatchPhrases(input, limit = 5) {
+  const target = normaliseRomanised(input);
+  if (!target) return [];
+
+  const phrases = Object.values(getPhraseIndex());
+  const targetWords = target.split(" ").filter(Boolean);
+
+  const scored = phrases.map(p => {
+    const cand = normaliseRomanised(p.te);
+    if (!cand) return { phrase: p, score: 0 };
+
+    // Word-overlap score (how many of the user's words appear in the candidate)
+    const candWords = cand.split(" ").filter(Boolean);
+    let overlap = 0;
+    for (const w of targetWords) {
+      if (w.length < 2) continue;
+      if (candWords.some(cw => cw === w || cw.startsWith(w) || w.startsWith(cw))) overlap++;
+    }
+    const wordScore = targetWords.length ? overlap / Math.max(targetWords.length, candWords.length) : 0;
+
+    // Whole-string similarity
+    const lev = levenshtein(target, cand);
+    const maxLen = Math.max(target.length, cand.length);
+    const charScore = maxLen ? Math.max(0, 1 - lev / maxLen) : 0;
+
+    const score = wordScore * 0.65 + charScore * 0.35;
+    return { phrase: p, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.filter(s => s.score > 0.35).slice(0, limit);
+}
+
 function recordTranslation(src, dst, dir) {
   state.translationHistory = state.translationHistory || [];
   state.translationHistory.unshift({ src, dst, dir, at: Date.now() });
@@ -1993,9 +2048,16 @@ function renderTranslator() {
   input.className = "translate-input";
   input.rows = 3;
   input.placeholder = isTeToEn
-    ? "Paste or type Telugu…  e.g.  నీళ్ళు తాగుతావా?"
+    ? "Type what you heard, in English letters.  e.g.  nuvvu bagunnava"
     : "Type English…  e.g.  Will you have water?";
   card.appendChild(input);
+
+  if (isTeToEn) {
+    const hint = el("div", { class: "translate-hint" },
+      "🎤 Tip — for spoken Telugu, the mic above is far more accurate than spelling it out. " +
+      "If you type, write it phonetically (the way it sounds) and we'll match known phrases.");
+    card.appendChild(hint);
+  }
 
   const translateBtn = el("button", { class: "btn btn-primary translate-go" }, "Translate →");
   translateBtn.onclick = () => runTranslate(input.value);
@@ -2042,17 +2104,54 @@ function renderTranslator() {
       resultBox.appendChild(el("div", { class: "translate-loading" }, "Translating…"));
       return;
     }
+    // Multiple-candidate suggestion mode
+    if (payload.candidates && payload.candidates.length) {
+      const wrap = el("div", { class: "translate-output translate-suggest" });
+      wrap.appendChild(el("div", { class: "translate-label" }, "DID YOU MEAN…"));
+      const list = el("div", { class: "candidate-list" });
+      payload.candidates.forEach(c => {
+        const item = el("div", { class: "candidate-row" });
+        const teRow = el("div", { class: "cand-te" }, c.phrase.te);
+        item.appendChild(teRow);
+        item.appendChild(el("div", { class: "cand-en" }, c.phrase.en));
+        item.appendChild(makeSpeakBtn(c.phrase.script || c.phrase.te));
+        item.style.cursor = "pointer";
+        item.onclick = (e) => {
+          if (e.target.closest("button")) return;
+          // Promote chosen candidate to a full result
+          setResult({
+            translation: c.phrase.en,
+            source: c.phrase.te,
+            matched: c.phrase,
+            message: `Matched to: ${c.phrase.te}`
+          });
+          recordTranslation(c.phrase.te, c.phrase.en, direction);
+        };
+        list.appendChild(item);
+      });
+      wrap.appendChild(list);
+      wrap.appendChild(el("div", { class: "translate-warn" },
+        "These are the closest matches from the phrases the app knows. Tap one to lock it in. " +
+        "For anything else, the 🎤 mic above will be more accurate."));
+      resultBox.appendChild(wrap);
+      return;
+    }
+    // Normal result
     const out = el("div", { class: "translate-output" });
     out.appendChild(el("div", { class: "translate-label" }, isTeToEn ? "ENGLISH" : "తెలుగు"));
     const text = el("div", { class: "translate-text" + (isTeToEn ? "" : " te") }, payload.translation);
     out.appendChild(text);
+    if (payload.message) {
+      out.appendChild(el("div", { class: "translate-source" }, payload.message));
+    }
     if (payload.quality !== undefined && payload.quality < 0.7) {
       out.appendChild(el("div", { class: "translate-warn" },
         "ℹ Low confidence — this is a rough machine translation, may not be exact."));
     }
     const actions = el("div", { class: "translate-actions" });
-    // Play audio if Telugu side
-    const teText = isTeToEn ? payload.source : payload.translation;
+    const teText = isTeToEn
+      ? (payload.matched ? (payload.matched.script || payload.matched.te) : payload.source)
+      : payload.translation;
     actions.appendChild(makeSpeakBtn(teText));
     const copyBtn = el("button", { class: "btn btn-ghost" }, "Copy");
     copyBtn.onclick = () => {
@@ -2069,6 +2168,35 @@ function renderTranslator() {
     const trimmed = (text || "").trim();
     if (!trimmed) return;
     setResult({ loading: true });
+
+    // Smart routing for Telugu→English when user typed Latin letters:
+    // try our known phrase index first (matches romanised forms) since
+    // MyMemory can't translate "ana gara oka raju".
+    if (isTeToEn && !isTeluguScript(trimmed)) {
+      const matches = fuzzyMatchPhrases(trimmed);
+      if (matches.length && matches[0].score >= 0.7) {
+        const m = matches[0].phrase;
+        setResult({
+          translation: m.en,
+          source: trimmed,
+          matched: m,
+          message: `Looks like you meant: "${m.te}"`
+        });
+        recordTranslation(trimmed, m.en, direction);
+        return;
+      }
+      if (matches.length) {
+        setResult({ candidates: matches });
+        return;
+      }
+      // No fuzzy match — tell the user honestly rather than feed garbage to the API.
+      setResult({ error:
+        "We couldn't find that in the phrases we know, and machine-translating English-letter Telugu doesn't work reliably. " +
+        "Try the 🎤 mic above (it understands spoken Telugu), or paste the actual Telugu script if you have it." });
+      return;
+    }
+
+    // Standard path: Telugu script in, or en→te direction.
     try {
       const { translation, quality } = await translateText(trimmed, fromLang, toLang);
       setResult({ translation, quality, source: trimmed });
