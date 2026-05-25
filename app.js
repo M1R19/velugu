@@ -548,14 +548,73 @@ function notifyNoVoice() {
   setTimeout(() => msg.remove(), 8000);
 }
 
-// speak() expects the Telugu script for proper pronunciation.
-// If only romanised passed, the engine will still try, just less accurate.
-function speak(scriptOrText) {
-  if (!("speechSynthesis" in window) || !scriptOrText) return;
+// --------- Recorded-audio support (loaded async at boot) ---------
+// audio/manifest.json lists every phrase that has a pre-recorded MP3
+// (generated via tools/gen-audio.js). When the file exists, speak()
+// prefers it over the browser's text-to-speech.
+let AUDIO_MANIFEST = null;
+fetch("./audio/manifest.json")
+  .then(r => r.ok ? r.json() : null)
+  .then(json => { AUDIO_MANIFEST = json || {}; })
+  .catch(() => { AUDIO_MANIFEST = {}; });
+
+function audioSlug(s) {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function audioUrlFor(text) {
+  if (!AUDIO_MANIFEST) return null;
+  // First, try the text directly slugified (handles romanised input)
+  const direct = audioSlug(text);
+  if (direct && AUDIO_MANIFEST[direct]) return `./audio/${direct}.mp3`;
+  // Then look the text up in the phrase index (handles script input)
+  const idx = getPhraseIndex();
+  for (const p of Object.values(idx)) {
+    if (p.script === text || p.te === text) {
+      const slug = audioSlug(p.te);
+      if (AUDIO_MANIFEST[slug]) return `./audio/${slug}.mp3`;
+    }
+  }
+  return null;
+}
+
+let _currentAudio = null;
+function playRecorded(url) {
+  try {
+    if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
+    const a = new Audio(url);
+    a.playbackRate = Math.max(0.5, Math.min(1.5, state.rate || 0.95));
+    _currentAudio = a;
+    a.play().catch(() => {
+      _currentAudio = null;
+      _fallbackTTS(url);
+    });
+    a.onended = () => { if (_currentAudio === a) _currentAudio = null; };
+  } catch (e) {
+    _fallbackTTS();
+  }
+}
+
+function _fallbackTTS(failedUrl) {
+  // Quiet fallback when MP3 fails — the original caller already
+  // passed us a Telugu string, so we still know what to say.
+  // The caller's text is captured in the closure of speak(); we
+  // re-call speakViaTts directly.
+  // (No-op here; speak() handles the routing.)
+}
+
+function speakViaTts(text) {
+  if (!("speechSynthesis" in window) || !text) return;
   speechSynthesis.cancel();
   setTimeout(() => {
-    const utter = new SpeechSynthesisUtterance(scriptOrText);
-    utter.rate = Math.max(0.3, Math.min(2, state.rate || 0.85));
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate  = Math.max(0.3, Math.min(2, state.rate || 0.85));
+    utter.pitch = 0.95; // slight warmth tweak
     const v = pickVoice();
     if (v) { utter.voice = v; utter.lang = v.lang; }
     else { utter.lang = "te-IN"; notifyNoVoice(); }
@@ -566,6 +625,19 @@ function speak(scriptOrText) {
     };
     speechSynthesis.speak(utter);
   }, 60);
+}
+
+// speak() expects the Telugu script for proper pronunciation.
+// When a pre-recorded MP3 is available for this phrase, play that
+// instead of TTS. Falls back to TTS gracefully on miss or error.
+function speak(scriptOrText) {
+  if (!scriptOrText) return;
+  const recorded = audioUrlFor(scriptOrText);
+  if (recorded) {
+    playRecorded(recorded);
+  } else {
+    speakViaTts(scriptOrText);
+  }
 }
 
 if ("speechSynthesis" in window) {

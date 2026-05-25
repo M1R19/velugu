@@ -973,3 +973,8 @@ const PHRASEBOOK = (() => {
     return { cat: g.cat, items };
   });
 })();
+
+// Allow Node tooling to load this file too (e.g. tools/gen-audio.js).
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { LESSONS, PHRASEBOOK };
+}
