@@ -1,0 +1,157 @@
+==============================================================
+VELUGU — STORE LISTING COPY
+==============================================================
+
+This file collects every piece of text you'll need to paste into
+Google Play Console and (later) Apple App Store Connect.
+
+Character limits are noted next to each field.
+
+==============================================================
+GOOGLE PLAY STORE
+==============================================================
+
+>>> App name (max 30 chars)
+Velugu — Light up Telugu
+
+>>> Short description (max 80 chars)
+A cozy 30-day spoken-Telugu app. Hear, repeat, earn lanterns.
+
+>>> Full description (max 4000 chars)
+Velugu is a calm, cozy 30-day journey into spoken Telugu — designed for absolute beginners who just want to talk, not memorize the script.
+
+This isn't a quiz machine. It's a small village where every phrase you learn lights a lantern.
+
+WHAT YOU'LL DO
+
+• Start with the simplest greetings and build to real conversations
+• See every phrase in English first, then in spoken Telugu
+• Tap to hear native-sounding audio for any word
+• Use your mic to practise saying phrases out loud — get scored on pronunciation
+• Play through 5 branching scenario sims (chai stall, market, auto ride, family visit, asking directions)
+• Collect lanterns as you go. No streaks to fear, no guilt loops.
+
+THE CURRICULUM (30 days, 4 regions)
+
+Week 1 — The Lane You Live On — Greetings, your name, basic numbers
+Week 2 — The Morning Market — Family, food, time, weather
+Week 3 — Streets & Bus Stops — Directions, shopping, transport, asking for help
+Week 4 — The Festival of Lights — Work, hobbies, feelings, real conversations
+
+FOR EARLY LEARNERS
+
+• English-first throughout — the Telugu script is optional
+• Romanised pronunciation shown for every phrase
+• Pick your guide: Anu (cheerful), Saraswati amma (warm grandmother), or Rohan (casual)
+• Mood-aware sessions: pick Slow / Good / Bright on any day
+• Daily review surfaces phrases you're about to forget (spaced repetition)
+• Weak Spots mode drills the exact phrases you keep missing
+
+ALSO IN HERE
+
+• Phrasebook of 150+ everyday phrases, fully searchable
+• Light and dark themes
+• Works completely offline after first launch
+• No account, no sign-up, no ads, no tracking
+• All your progress stays on your device
+
+WHO IT'S FOR
+
+• Anyone curious about Telugu — travelers, partners marrying into Telugu families, NRIs reconnecting, language enthusiasts
+• Total beginners who want to speak, not study
+• Anyone tired of language apps that punish you for missing a day
+
+WHO IT'S NOT FOR
+
+• Advanced learners — this is a foundation, not a graduate course
+• Anyone who wants to read & write the Telugu script first (we don't focus on that)
+
+This is a small, lovingly-built app. If you stick with it for 30 days, you'll genuinely be able to hold a simple Telugu conversation. After that, find a native speaker — that's where real fluency lives.
+
+>>> What's new (release notes, ~500 chars)
+First release. 30 days of conversational Telugu lessons, 4 practice modes including mic-graded pronunciation, 5 interactive scenarios, spaced repetition, three guide characters, mood-aware sessions, light and dark themes. Everything runs on your device — no account, no tracking.
+
+>>> Category
+Education
+(Secondary: Lifestyle)
+
+>>> Content rating
+For everyone (no ads, no in-app purchases, no user-generated content, no offensive material)
+
+>>> Tags / keywords (Play Store auto-extracts)
+Telugu, learn telugu, telugu language, language learning, india, spoken telugu, telugu phrases, andhra, telangana, language app
+
+>>> Privacy policy URL
+https://m1r19.github.io/velugu/privacy.html
+
+>>> Website
+https://m1r19.github.io/velugu/
+
+>>> Contact email
+(your email here)
+
+>>> Required visual assets
+• App icon: icons/icon-512.png (512x512 PNG, the one in this repo)
+• Feature graphic: icons/feature-graphic-1024x500.png (1024x500 PNG)
+• Screenshots: 2-8 phone screenshots (1080x1920 portrait recommended). Take these yourself from the live app at m1r19.github.io/velugu — capture the home village, a lesson, the "Say It" mic feedback, a scenario, and the Phrasebook.
+• (Optional) Tablet screenshots
+• (Optional) Promo video URL (YouTube link)
+
+==============================================================
+APPLE APP STORE (for when you tackle iOS)
+==============================================================
+
+>>> App name (max 30 chars)
+Velugu
+
+>>> Subtitle (max 30 chars)
+Light up Telugu
+
+>>> Promotional text (max 170 chars)
+A cozy 30-day spoken-Telugu app. Hear, repeat, earn lanterns. No script required, no streak guilt — just a small village to visit each day.
+
+>>> Description (max 4000 chars)
+[reuse the Play Store full description above — it's already within limits and store-neutral]
+
+>>> Keywords (max 100 chars, comma-separated, no spaces after commas)
+telugu,language,learn telugu,india,spoken telugu,language learning,phrases,andhra,telangana,beginner
+
+>>> Support URL
+https://github.com/M1R19/velugu/issues
+
+>>> Marketing URL
+https://m1r19.github.io/velugu/
+
+>>> Privacy policy URL
+https://m1r19.github.io/velugu/privacy.html
+
+>>> Category
+Primary: Education
+Secondary: Lifestyle
+
+>>> Age rating
+4+ (no objectionable content)
+
+>>> App Review Information
+Demo account: not needed (no login)
+Review notes: "This app is a complete on-device Telugu learning experience. No account or login is required. Speech recognition uses the iOS Web Speech API. All progress is stored locally."
+
+==============================================================
+TAGLINE OPTIONS (if you need others)
+==============================================================
+1. A cozy 30-day journey into spoken Telugu.
+2. Light up Telugu — one lantern at a time.
+3. Talk Telugu in 30 days. No script required.
+4. The cozy way to learn Telugu.
+5. Your village for learning Telugu.
+
+==============================================================
+ONE-LINER PITCHES (Twitter / press)
+==============================================================
+For Twitter (≤280): "Velugu is a 30-day cozy Telugu app — English in, spoken Telugu out. No script, no streak guilt, no tracking. A small village you visit each day. m1r19.github.io/velugu"
+
+For a tagline plate: "Velugu — light up Telugu, one lantern at a time."
+
+==============================================================
+END
+==============================================================

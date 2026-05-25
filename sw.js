@@ -1,5 +1,5 @@
 // Velugu service worker — bump CACHE on each meaningful deploy
-const CACHE = "velugu-v1";
+const CACHE = "velugu-v2";
 
 const ASSETS = [
   "./",
@@ -9,7 +9,9 @@ const ASSETS = [
   "./lessons.js",
   "./scenarios.js",
   "./manifest.json",
-  "./icon.svg"
+  "./icon.svg",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
 self.addEventListener("install", e => {

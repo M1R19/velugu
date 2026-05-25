@@ -6,3 +6,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Node tooling (sharp etc. used only for icon generation)
+tools/node_modules/
+tools/package-lock.json
