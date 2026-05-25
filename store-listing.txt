@@ -78,6 +78,22 @@ Education
 >>> Content rating
 For everyone (no ads, no in-app purchases, no user-generated content, no offensive material)
 
+>>> Data Safety form answers (for Play Console)
+- Does your app collect or share any of the required user data types? -> Yes
+- Data collected:
+    * Web browsing history -> No
+    * App activity / In-app events -> No
+    * App info / Crash logs -> No
+    * Device or other IDs -> No
+    * Other data:
+        - "Page views" (aggregate, anonymous, via Cloudflare Web Analytics)
+        - Purpose: Analytics
+        - Is this data shared with third parties? -> Yes (Cloudflare for analytics processing)
+        - Is this data collected ephemerally or persistently? -> Persistently (aggregate only)
+        - Is collection of this data required or optional? -> Required (no opt-out in-app)
+- Encryption in transit? -> Yes (HTTPS)
+- Can users request data deletion? -> Yes (we don't store any individual data, so there's nothing to delete; this is documented in the privacy policy)
+
 >>> Tags / keywords (Play Store auto-extracts)
 Telugu, learn telugu, telugu language, language learning, india, spoken telugu, telugu phrases, andhra, telangana, language app
 
