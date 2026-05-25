@@ -21,7 +21,9 @@ const defaultState = {
   interests: [],            // ["travel","family","film","food","work","music","romance"]
   todayMood: null,          // "slow" | "good" | "bright"
   todayMoodDate: null,      // iso date string
-  scenariosDone: {}         // scenarioId -> { completedAt, choices: [] }
+  scenariosDone: {},        // scenarioId -> { completedAt, choices: [] }
+  notifyEnabled: false,     // user opted in to soft reminders
+  lastNudgeDate: null       // last date we surfaced a re-engagement notification
 };
 
 // ============================================================
@@ -61,6 +63,22 @@ const CHARACTERS = {
       first: [
         "Glad you came. Let's light your first diya.",
         "Don't worry about getting it right. Just say something."
+      ],
+      returningSoon: [
+        "Welcome back. Yesterday's diya is still warm.",
+        "Hey! You came back. Two minutes is all we need."
+      ],
+      returningFew: [
+        "Been wondering about you. {d} days isn't a lot — let's pick up softly.",
+        "Anu's tea is fresh. Glad you're here."
+      ],
+      returningWeek: [
+        "It's been a quiet week. No pressure — just one phrase if you have one.",
+        "{d} days away is fine. Let's start small."
+      ],
+      returningLong: [
+        "{d} days. The chai went cold but I made a fresh pot.",
+        "Welcome back home. We start wherever you are."
       ]
     }
   },
@@ -96,6 +114,22 @@ const CHARACTERS = {
       first: [
         "Welcome, child. We will go slowly together.",
         "Don't be afraid. Even one word is brave."
+      ],
+      returningSoon: [
+        "There you are, child. Sit, sit.",
+        "Back already? Good. Have you eaten?"
+      ],
+      returningFew: [
+        "Just {d} days — nothing at all. Come, no questions today.",
+        "We missed you, but life is busy. One small thing today is plenty."
+      ],
+      returningWeek: [
+        "Whatever kept you, it's fine. Take it slow.",
+        "{d} days. Don't apologise — just sit a while."
+      ],
+      returningLong: [
+        "Welcome home. Take your time settling back in.",
+        "{d} days is nothing. We start wherever you are."
       ]
     }
   },
@@ -130,6 +164,22 @@ const CHARACTERS = {
       first: [
         "Welcome to the village. I'll keep it light.",
         "No pressure. We'll vibe through it."
+      ],
+      returningSoon: [
+        "Yo, you're back. Quick one?",
+        "Knew you'd swing by. Two minutes?"
+      ],
+      returningFew: [
+        "Where've you been? {d} days. Let's get back into it, easy.",
+        "Vibe's still here. Pick up where you left off."
+      ],
+      returningWeek: [
+        "Long time. No worries, let's start light.",
+        "{d} days off — happens. One phrase, then bounce."
+      ],
+      returningLong: [
+        "{d} days! Plot twist. Let's pick up easy.",
+        "Welcome back, stranger. Light mode today."
       ]
     }
   }
@@ -189,18 +239,38 @@ function injectFireflies() {
   }
 }
 
+function daysSinceLastStudy(st) {
+  if (!st.lastStudyDate) return 0;
+  const today = new Date(isoDate() + "T00:00:00");
+  const last = new Date(st.lastStudyDate + "T00:00:00");
+  const diff = Math.floor((today - last) / 86400000);
+  return Math.max(0, diff);
+}
+
 function getCharacterLine(char, st) {
   const h = new Date().getHours();
   const completedCount = Object.keys(st.completed).length;
+  const daysAway = daysSinceLastStudy(st);
+
   let pool;
-  if (completedCount === 0)            pool = char.lines.first;
+  if (completedCount === 0) {
+    pool = char.lines.first;
+  }
+  // Re-engagement: detected gap since last visit
+  else if (daysAway === 1 && char.lines.returningSoon) pool = char.lines.returningSoon;
+  else if (daysAway <= 3 && daysAway > 0 && char.lines.returningFew) pool = char.lines.returningFew;
+  else if (daysAway <= 7 && daysAway > 0 && char.lines.returningWeek) pool = char.lines.returningWeek;
+  else if (daysAway > 7 && char.lines.returningLong) pool = char.lines.returningLong;
+  // Streak celebration
   else if (st.streak >= 3 && Math.random() < 0.35) pool = char.lines.streak;
+  // Time-of-day default
   else if (h < 12) pool = char.lines.morning;
   else if (h < 17) pool = char.lines.afternoon;
   else if (h < 21) pool = char.lines.evening;
   else             pool = char.lines.night;
+
   let line = pool[Math.floor(Math.random() * pool.length)];
-  return line.replace("{n}", String(st.streak));
+  return line.replace("{n}", String(st.streak)).replace("{d}", String(daysAway));
 }
 
 let state = loadState();
@@ -902,6 +972,14 @@ function renderSettings() {
   document.querySelectorAll(".chip[data-font]").forEach(c => c.classList.toggle("active", c.dataset.font === state.font));
   document.querySelectorAll(".chip[data-translit]").forEach(c => c.classList.toggle("active", c.dataset.translit === state.showScript));
   document.querySelectorAll(".chip[data-character]").forEach(c => c.classList.toggle("active", c.dataset.character === state.character));
+  document.querySelectorAll(".chip[data-notify]").forEach(c => c.classList.toggle("active", c.dataset.notify === (state.notifyEnabled ? "on" : "off")));
+  const status = document.getElementById("notify-status");
+  if (status) {
+    if (!("Notification" in window)) status.textContent = "(your browser doesn't support notifications)";
+    else if (Notification.permission === "denied") status.textContent = "(permission blocked — re-enable in browser settings)";
+    else if (state.notifyEnabled) status.textContent = "Will gently nudge if you've been away.";
+    else status.textContent = "Fires when you open the browser after a gap — best-effort.";
+  }
   const rate = document.getElementById("speech-rate");
   if (rate) {
     rate.value = state.rate;
@@ -938,6 +1016,31 @@ document.querySelectorAll(".chip[data-character]").forEach(c =>
     saveState();
     renderSettings();
     if (state.currentView.tab === "dashboard") renderDashboard();
+  }));
+document.querySelectorAll(".chip[data-notify]").forEach(c =>
+  c.addEventListener("click", async () => {
+    const want = c.dataset.notify === "on";
+    if (want && "Notification" in window) {
+      let perm = Notification.permission;
+      if (perm === "default") perm = await Notification.requestPermission();
+      if (perm === "granted") {
+        state.notifyEnabled = true;
+        // Fire a confirmation notification so they see what it looks like
+        try {
+          new Notification("🪔 Soft reminders on", {
+            body: "We'll gently nudge you when you open this device after a few quiet days.",
+            icon: "./icons/icon-192.png",
+            silent: false
+          });
+        } catch (e) { /* some browsers throw on insecure origins */ }
+      } else {
+        state.notifyEnabled = false;
+      }
+    } else {
+      state.notifyEnabled = false;
+    }
+    saveState();
+    renderSettings();
   }));
 
 const rateInput = document.getElementById("speech-rate");
@@ -1800,6 +1903,33 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
   });
 }
 
+function maybeFireSoftReminder() {
+  if (!state.notifyEnabled) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const today = isoDate();
+  if (state.lastNudgeDate === today) return; // already nudged today
+  const gap = daysSinceLastStudy(state);
+  if (gap < 2) return;                       // only after at least 2 days away
+
+  const char = CHARACTERS[state.character] || CHARACTERS.anu;
+  const messages = {
+    anu:   `Anu's diya flickered for you. ${gap} days — two minutes today?`,
+    amma:  `Saraswati amma left tea on the bench. ${gap} days, no rush.`,
+    rohan: `Yo, ${gap} days! Pick up easy — one phrase?`
+  };
+  try {
+    const n = new Notification("🪔 Velugu", {
+      body: messages[state.character] || messages.anu,
+      icon: "./icons/icon-192.png",
+      tag: "velugu-reminder",
+      renotify: false
+    });
+    n.onclick = () => { window.focus(); n.close(); };
+    state.lastNudgeDate = today;
+    saveState();
+  } catch (e) { /* ignore */ }
+}
+
 // --------- boot ---------
 applySettings();
 const startTab = state.currentView.tab && document.getElementById("tab-" + state.currentView.tab) ? state.currentView.tab : "dashboard";
@@ -1808,6 +1938,8 @@ renderDashboard();
 
 // Show onboarding on first visit
 if (!state.hasOnboarded) {
-  // Slight delay so the dashboard renders behind it (atmospheric)
   setTimeout(startOnboarding, 200);
+} else {
+  // Fire a soft reminder if user opted in and they've been away
+  setTimeout(maybeFireSoftReminder, 800);
 }
