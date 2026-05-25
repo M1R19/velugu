@@ -620,7 +620,7 @@ function switchTab(name) {
 document.querySelectorAll(".nav-btn").forEach(btn => {
   btn.addEventListener("click", () => { haptic(6); switchTab(btn.dataset.tab); });
 });
-buildBottomNav();
+// NOTE: buildBottomNav() is called from the boot section (after ICONS is defined).
 
 // --------- DOM helper ---------
 // ============================================================
@@ -2929,6 +2929,7 @@ function maybeFireSoftReminder() {
 }
 
 // --------- boot ---------
+buildBottomNav();              // now safe — ICONS is defined
 applySettings();
 const startTab = state.currentView.tab && document.getElementById("tab-" + state.currentView.tab) ? state.currentView.tab : "dashboard";
 switchTab(startTab);
