@@ -1933,39 +1933,74 @@ function normaliseRomanised(s) {
     .trim();
 }
 
+// Collapse spelling variations users actually make when typing Telugu phonetically:
+// - aspirated/unaspirated (dh→d, th→t, etc.)
+// - long vowels (aa→a, ee→e)
+// - doubled consonants (nn→n, tt→t)
+// - silent helpers (eraneous "h" in "entha", "dharma")
+function phoneticKey(s) {
+  return normaliseRomanised(s)
+    .replace(/(dh|th|bh|gh|ph|kh|chh|jh)/g, (m, p) => p[0])
+    .replace(/aa+/g, "a")
+    .replace(/ee+/g, "e")
+    .replace(/ii+/g, "i")
+    .replace(/oo+/g, "o")
+    .replace(/uu+/g, "u")
+    .replace(/([bcdfgjklmnpqrstvwxz])\1+/gi, "$1")  // collapse doubled consonants
+    .replace(/h(?![aeiou])/g, "")                    // drop trailing/internal silent h
+    .replace(/y(?=[aeiou])/g, "")                    // drop pre-vowel y (yajamani vs ajamani)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // Fuzzy match user-typed romanised text against our phrase index.
-// Returns top scoring matches above a noise floor.
-function fuzzyMatchPhrases(input, limit = 5) {
-  const target = normaliseRomanised(input);
-  if (!target) return [];
+function fuzzyMatchPhrases(input, limit = 6) {
+  const targetN = normaliseRomanised(input);
+  const targetP = phoneticKey(input);
+  if (!targetP) return [];
 
   const phrases = Object.values(getPhraseIndex());
-  const targetWords = target.split(" ").filter(Boolean);
+  const targetWordsP = targetP.split(" ").filter(w => w.length >= 2);
 
   const scored = phrases.map(p => {
-    const cand = normaliseRomanised(p.te);
-    if (!cand) return { phrase: p, score: 0 };
+    const candN = normaliseRomanised(p.te);
+    const candP = phoneticKey(p.te);
+    if (!candP) return { phrase: p, score: 0 };
 
-    // Word-overlap score (how many of the user's words appear in the candidate)
-    const candWords = cand.split(" ").filter(Boolean);
+    const candWordsP = candP.split(" ").filter(w => w.length >= 2);
+
+    // Word-overlap score with phonetic comparison + substring fuzziness
     let overlap = 0;
-    for (const w of targetWords) {
-      if (w.length < 2) continue;
-      if (candWords.some(cw => cw === w || cw.startsWith(w) || w.startsWith(cw))) overlap++;
+    for (const tw of targetWordsP) {
+      const hit = candWordsP.some(cw =>
+        cw === tw ||
+        cw.startsWith(tw) || tw.startsWith(cw) ||
+        (cw.length >= 3 && tw.length >= 3 && (cw.includes(tw) || tw.includes(cw))) ||
+        (cw.length >= 3 && tw.length >= 3 && levenshtein(cw, tw) <= 1)
+      );
+      if (hit) overlap++;
     }
-    const wordScore = targetWords.length ? overlap / Math.max(targetWords.length, candWords.length) : 0;
+    const wordScore = (targetWordsP.length && candWordsP.length)
+      ? overlap / Math.max(targetWordsP.length, candWordsP.length)
+      : 0;
 
-    // Whole-string similarity
-    const lev = levenshtein(target, cand);
-    const maxLen = Math.max(target.length, cand.length);
+    // Whole-string phonetic similarity (joined, spaces ignored)
+    const tFlat = targetP.replace(/\s/g, "");
+    const cFlat = candP.replace(/\s/g, "");
+    const lev = levenshtein(tFlat, cFlat);
+    const maxLen = Math.max(tFlat.length, cFlat.length);
     const charScore = maxLen ? Math.max(0, 1 - lev / maxLen) : 0;
 
-    const score = wordScore * 0.65 + charScore * 0.35;
+    // Bonus if every user word found a hit (strong indicator of right phrase)
+    const allHit = overlap > 0 && overlap === targetWordsP.length;
+    const bonus = allHit ? 0.15 : 0;
+
+    const score = Math.min(1, wordScore * 0.55 + charScore * 0.40 + bonus);
     return { phrase: p, score };
   });
 
   scored.sort((a, b) => b.score - a.score);
-  return scored.filter(s => s.score > 0.35).slice(0, limit);
+  return scored.filter(s => s.score > 0.22).slice(0, limit);
 }
 
 function recordTranslation(src, dst, dir) {
@@ -2107,7 +2142,10 @@ function renderTranslator() {
     // Multiple-candidate suggestion mode
     if (payload.candidates && payload.candidates.length) {
       const wrap = el("div", { class: "translate-output translate-suggest" });
-      wrap.appendChild(el("div", { class: "translate-label" }, "DID YOU MEAN…"));
+      const headerText = payload.weak
+        ? "WE DON'T HAVE THIS EXACT PHRASE — SIMILAR ONES IN OUR DATABASE:"
+        : "DID YOU MEAN…";
+      wrap.appendChild(el("div", { class: "translate-label" }, headerText));
       const list = el("div", { class: "candidate-list" });
       payload.candidates.forEach(c => {
         const item = el("div", { class: "candidate-row" });
@@ -2118,7 +2156,6 @@ function renderTranslator() {
         item.style.cursor = "pointer";
         item.onclick = (e) => {
           if (e.target.closest("button")) return;
-          // Promote chosen candidate to a full result
           setResult({
             translation: c.phrase.en,
             source: c.phrase.te,
@@ -2131,8 +2168,9 @@ function renderTranslator() {
       });
       wrap.appendChild(list);
       wrap.appendChild(el("div", { class: "translate-warn" },
-        "These are the closest matches from the phrases the app knows. Tap one to lock it in. " +
-        "For anything else, the 🎤 mic above will be more accurate."));
+        payload.weak
+          ? "Tap one if it's what you meant. Otherwise the 🎤 mic above can capture the actual phrase your friend said."
+          : "Tap one to lock it in. For anything else, the 🎤 mic above will be more accurate."));
       resultBox.appendChild(wrap);
       return;
     }
@@ -2174,22 +2212,28 @@ function renderTranslator() {
     // MyMemory can't translate "ana gara oka raju".
     if (isTeToEn && !isTeluguScript(trimmed)) {
       const matches = fuzzyMatchPhrases(trimmed);
-      if (matches.length && matches[0].score >= 0.7) {
+      // Strong single match → confident result
+      if (matches.length && matches[0].score >= 0.65) {
         const m = matches[0].phrase;
         setResult({
           translation: m.en,
           source: trimmed,
           matched: m,
-          message: `Looks like you meant: "${m.te}"`
+          message: `Matched to: "${m.te}"`
         });
         recordTranslation(trimmed, m.en, direction);
         return;
       }
+      // Anything else where we have candidates → show suggestions
       if (matches.length) {
-        setResult({ candidates: matches });
+        const topScore = matches[0].score;
+        setResult({
+          candidates: matches,
+          weak: topScore < 0.4
+        });
         return;
       }
-      // No fuzzy match — tell the user honestly rather than feed garbage to the API.
+      // Truly no signal — honest error.
       setResult({ error:
         "We couldn't find that in the phrases we know, and machine-translating English-letter Telugu doesn't work reliably. " +
         "Try the 🎤 mic above (it understands spoken Telugu), or paste the actual Telugu script if you have it." });
@@ -2532,10 +2576,23 @@ function celebrate(title, sub, opts = {}) {
 
 // --------- service worker (PWA) ---------
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(err => {
+  window.addEventListener("load", async () => {
+    try {
+      // updateViaCache:none stops the browser from caching sw.js itself,
+      // so version bumps deploy on the very next visit.
+      const reg = await navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
+      // Force an immediate update check on every load.
+      reg.update();
+      // When a new SW takes control, reload once so the user sees the new app.
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+    } catch (err) {
       console.warn("SW registration failed:", err);
-    });
+    }
   });
 }
 
