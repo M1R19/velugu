@@ -87,9 +87,8 @@
         <span id="streak-num">0</span>
       </div>
     </div>
-    <nav class="nav-tabs">
+    <nav class="nav-tabs nav-desktop">
       <button class="nav-btn active" data-tab="dashboard">Home</button>
-      <button class="nav-btn" data-tab="lesson">Today's Path</button>
       <button class="nav-btn" data-tab="practice">Practice</button>
       <button class="nav-btn" data-tab="scenarios">Scenarios</button>
       <button class="nav-btn" data-tab="translator">Translate</button>
@@ -115,18 +114,21 @@
         </div>
       </div>
 
-      <div class="mood-bar" id="mood-bar">
-        <button class="mood-opt" data-mood="slow">☁️ Slow</button>
-        <button class="mood-opt" data-mood="good">☀️ Good</button>
-        <button class="mood-opt" data-mood="bright">✨ Bright</button>
-      </div>
-
       <div class="cta-row">
         <button id="continue-btn" class="cta-primary">
           <span id="cta-label">Open today's path</span>
           <span class="cta-time" id="cta-time">~2 min</span>
         </button>
       </div>
+
+      <div class="mood-bar" id="mood-bar">
+        <span class="mood-label">Today I'm feeling</span>
+        <button class="mood-opt" data-mood="slow">☁️ Slow</button>
+        <button class="mood-opt" data-mood="good">☀️ Good</button>
+        <button class="mood-opt" data-mood="bright">✨ Bright</button>
+      </div>
+
+      <div id="review-hero" class="review-hero" style="display:none;"></div>
 
       <div class="path-wrap">
         <div class="path-label">
@@ -136,23 +138,7 @@
         <div class="diya-row" id="diya-row"></div>
       </div>
 
-      <div class="side-cards">
-        <div class="side-card" id="card-review">
-          <span class="side-icon">🎯</span>
-          <div class="side-title">Review</div>
-          <div class="side-meta" id="review-meta">0 due today</div>
-        </div>
-        <div class="side-card" id="card-translator">
-          <span class="side-icon">💬</span>
-          <div class="side-title">Translate</div>
-          <div class="side-meta">Heard something?</div>
-        </div>
-        <div class="side-card" id="card-phrasebook">
-          <span class="side-icon">📖</span>
-          <div class="side-title">Phrasebook</div>
-          <div class="side-meta">Look up anything</div>
-        </div>
-      </div>
+      <div class="side-cards" id="side-cards"></div>
 
       <div class="chapters-section">
         <h3>Your journey</h3>
@@ -265,6 +251,9 @@
       </div>
     </section>
   </main>
+
+  <!-- Bottom nav (mobile only) -->
+  <nav class="nav-bottom" id="nav-bottom"></nav>
 
   <footer class="footer">
     <p>Velugu · made with warmth</p>

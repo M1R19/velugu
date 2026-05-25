@@ -29,7 +29,9 @@ const defaultState = {
   translateDirection: "te-en", // "te-en" or "en-te"
   translationHistory: [],   // [{ src, dst, dir, at }]
   streakFreezesUsed: {},    // monthKey ("2026-05") -> count, max 3/month
-  installBannerDismissed: false
+  installBannerDismissed: false,
+  favourites: [],           // array of phrase te-keys
+  firstTimeWelcomeShown: false
 };
 
 // ============================================================
@@ -571,11 +573,39 @@ if ("speechSynthesis" in window) {
 }
 
 // --------- routing / tabs ---------
+const BOTTOM_NAV_ITEMS = [
+  { id: "dashboard",  label: "Home",     iconKey: "home" },
+  { id: "practice",   label: "Practice", iconKey: "target" },
+  { id: "translator", label: "Translate",iconKey: "translate" },
+  { id: "phrasebook", label: "Phrases",  iconKey: "book" },
+  { id: "settings",   label: "More",     iconKey: "settings" }
+];
+
+function buildBottomNav() {
+  const host = document.getElementById("nav-bottom");
+  if (!host) return;
+  host.innerHTML = "";
+  BOTTOM_NAV_ITEMS.forEach(item => {
+    const btn = document.createElement("button");
+    btn.className = "nav-bottom-btn";
+    btn.dataset.tab = item.id;
+    btn.innerHTML = `<span class="nav-icon">${icon(item.iconKey, 22)}</span><span class="nav-label">${item.label}</span>`;
+    btn.addEventListener("click", () => { haptic(6); switchTab(item.id); });
+    host.appendChild(btn);
+  });
+}
+
 function switchTab(name) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-  document.getElementById("tab-" + name).classList.add("active");
-  document.querySelector(`.nav-btn[data-tab="${name}"]`).classList.add("active");
+  document.querySelectorAll(".nav-bottom-btn").forEach(b => b.classList.remove("active"));
+  const target = document.getElementById("tab-" + name);
+  if (!target) return;
+  target.classList.add("active");
+  const topBtn = document.querySelector(`.nav-btn[data-tab="${name}"]`);
+  if (topBtn) topBtn.classList.add("active");
+  const bottomBtn = document.querySelector(`.nav-bottom-btn[data-tab="${name}"]`);
+  if (bottomBtn) bottomBtn.classList.add("active");
   state.currentView.tab = name;
   saveState();
   if (name === "dashboard")  renderDashboard();
@@ -588,10 +618,54 @@ function switchTab(name) {
   window.scrollTo(0, 0);
 }
 document.querySelectorAll(".nav-btn").forEach(btn => {
-  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  btn.addEventListener("click", () => { haptic(6); switchTab(btn.dataset.tab); });
 });
+buildBottomNav();
 
 // --------- DOM helper ---------
+// ============================================================
+// ICON SYSTEM — inline Lucide-style SVGs (no font load, no library)
+// ============================================================
+const ICONS = {
+  home:        '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+  practice:    '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  translate:   '<path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>',
+  book:        '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>',
+  settings:    '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  mic:         '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
+  volume:      '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>',
+  heart:       '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/>',
+  heartFill:   '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z" fill="currentColor"/>',
+  target:      '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  cards:       '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/>',
+  ear:         '<path d="M6 8.5a6.5 6.5 0 1 1 13 0c0 6-6 6-6 10a3.5 3.5 0 1 1-7 0"/><path d="M15 8.5a2.5 2.5 0 0 0-5 0v1a2 2 0 1 1 0 4"/>',
+  puzzle:      '<path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.498.925.968a.98.98 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"/>',
+  speak:       '<path d="M12 6V2"/><path d="M5 11a7 7 0 0 1 14 0v3a4 4 0 0 1-4 4h-1v-7a2 2 0 0 0-4 0v7H9a4 4 0 0 1-4-4z"/>',
+  flame:       '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  moon:        '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  sparkle:     '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',
+  bookmark:    '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+  arrowRight:  '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  arrowLeft:   '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
+  close:       '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  check:       '<path d="M20 6 9 17l-5-5"/>',
+  refresh:     '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  copy:        '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  diya:        '<ellipse cx="12" cy="14" rx="9" ry="2.5" fill="currentColor" opacity="0.85"/><path d="M3 14c0-1.4 2-3 9-3s9 1.6 9 3" fill="none"/><path d="M12 3c-2 2.5-2 4.5 0 7 2-2.5 2-4.5 0-7Z" fill="currentColor"/>',
+  globe:       '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'
+};
+
+function icon(name, size = 20, extraClass = "") {
+  const path = ICONS[name];
+  if (!path) return "";
+  return `<svg class="icon ${extraClass}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+}
+
+// Light haptic feedback (silently no-ops where unsupported)
+function haptic(ms = 8) {
+  try { navigator.vibrate?.(ms); } catch (e) {}
+}
+
 function el(tag, attrs = {}, ...children) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -657,10 +731,32 @@ function renderDashboard() {
   document.getElementById("path-meta").textContent = `${lit} of ${size} lit`;
   renderDiyaRow(region, nextDay);
 
-  // Side cards
+  // Prominent review hero when due > 0
   const dueCount = srsDueCards().length;
-  document.getElementById("review-meta").textContent = dueCount > 0 ? `${dueCount} due today` : "All caught up";
-  document.getElementById("card-review").classList.toggle("disabled", dueCount === 0);
+  const reviewHero = document.getElementById("review-hero");
+  if (reviewHero) {
+    if (dueCount > 0) {
+      reviewHero.style.display = "flex";
+      reviewHero.innerHTML = `
+        <div class="rh-icon">${icon("target", 28)}</div>
+        <div class="rh-body">
+          <div class="rh-title">${dueCount} phrase${dueCount === 1 ? "" : "s"} ready for review</div>
+          <div class="rh-sub">A 3-minute walk through what you're about to forget.</div>
+        </div>
+        <div class="rh-cta">${icon("arrowRight", 22)}</div>
+      `;
+      reviewHero.onclick = () => {
+        haptic(8);
+        switchTab("practice");
+        setTimeout(() => openPracticeMode("review"), 50);
+      };
+    } else {
+      reviewHero.style.display = "none";
+    }
+  }
+
+  // Side cards — built dynamically so we can swap based on state
+  renderSideCards();
 
   // Region list
   renderRegions();
@@ -672,6 +768,78 @@ function renderDashboard() {
   if (timeEl) {
     timeEl.textContent = state.todayMood === "slow" ? "~1 min" : state.todayMood === "bright" ? "~4 min" : "~2 min";
   }
+
+  // First-time welcome overlay
+  maybeShowFirstTimeWelcome();
+}
+
+function renderSideCards() {
+  const host = document.getElementById("side-cards");
+  if (!host) return;
+  host.innerHTML = "";
+  const cards = [
+    { id: "translator", iconKey: "translate", title: "Translate", meta: "Heard something?",
+      action: () => switchTab("translator") },
+    { id: "phrasebook", iconKey: "book",      title: "Phrasebook", meta: "Browse or search",
+      action: () => switchTab("phrasebook") },
+    { id: "scenarios",  iconKey: "puzzle",    title: "Scenarios", meta: "Practice a real scene",
+      action: () => switchTab("scenarios") },
+    { id: "favourites", iconKey: "heart",     title: "Saved",     meta: (state.favourites?.length || 0) + " phrases",
+      action: () => { state.currentView.tab = "phrasebook"; switchTab("phrasebook"); setTimeout(() => scrollToFavourites(), 60); } }
+  ];
+  cards.forEach(c => {
+    const card = el("div", { class: "side-card", onclick: () => { haptic(6); c.action(); } });
+    card.innerHTML = `<span class="side-icon">${icon(c.iconKey, 24)}</span>
+      <div class="side-title">${c.title}</div>
+      <div class="side-meta">${c.meta}</div>`;
+    host.appendChild(card);
+  });
+}
+
+function scrollToFavourites() {
+  const el = document.getElementById("favourites-section");
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// First-time welcome: shown once right after onboarding completes.
+function maybeShowFirstTimeWelcome() {
+  if (state.firstTimeWelcomeShown) return;
+  if (!state.hasOnboarded) return;
+  if (Object.keys(state.completed).length > 0) {
+    state.firstTimeWelcomeShown = true;
+    saveState();
+    return;
+  }
+  const char = CHARACTERS[state.character] || CHARACTERS.anu;
+  const overlay = document.createElement("div");
+  overlay.className = "first-time-overlay";
+  overlay.innerHTML = `
+    <div class="ft-card">
+      <div class="ft-avatar" style="background:linear-gradient(135deg,var(--rose),var(--primary))">${char.initial}</div>
+      <div class="ft-name">${char.name}</div>
+      <h2 class="ft-title">You're in. Ready for your first diya?</h2>
+      <p class="ft-line">It's a 2-minute path. I'll walk you through it, one phrase at a time. The first time always feels like a lot — just listen, repeat what feels right, and we'll go.</p>
+      <button class="cta-primary ft-go">Let's go ${icon("arrowRight", 18)}</button>
+      <button class="ft-skip">I'll explore first</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  state.firstTimeWelcomeShown = true;
+  saveState();
+
+  overlay.querySelector(".ft-go").addEventListener("click", () => {
+    haptic(10);
+    overlay.classList.add("dismissed");
+    setTimeout(() => {
+      overlay.remove();
+      state.currentView.day = 1;
+      switchTab("lesson");
+    }, 350);
+  });
+  overlay.querySelector(".ft-skip").addEventListener("click", () => {
+    overlay.classList.add("dismissed");
+    setTimeout(() => overlay.remove(), 350);
+  });
 }
 
 function diyaSvgMarkup() {
@@ -754,21 +922,9 @@ function renderRegions() {
 }
 
 document.getElementById("continue-btn").addEventListener("click", () => {
+  haptic(8);
   state.currentView.day = Math.min(state.unlockedDay, LESSONS.length);
   switchTab("lesson");
-});
-
-// Side card handlers
-document.getElementById("card-review").addEventListener("click", () => {
-  if (srsDueCards().length === 0) return;
-  switchTab("practice");
-  setTimeout(() => openPracticeMode("review"), 50);
-});
-document.getElementById("card-translator").addEventListener("click", () => {
-  switchTab("translator");
-});
-document.getElementById("card-phrasebook").addEventListener("click", () => {
-  switchTab("phrasebook");
 });
 
 // --------- LESSON VIEW ---------
@@ -871,6 +1027,33 @@ function renderSection(sec) {
   return document.createTextNode("");
 }
 
+function phraseKey(p) { return (p.te || "").toLowerCase().trim(); }
+function isFavourite(p) {
+  return (state.favourites || []).includes(phraseKey(p));
+}
+function toggleFavourite(p) {
+  state.favourites = state.favourites || [];
+  const key = phraseKey(p);
+  const i = state.favourites.indexOf(key);
+  if (i >= 0) state.favourites.splice(i, 1);
+  else state.favourites.push(key);
+  saveState();
+  haptic(8);
+}
+
+function makeFavBtn(p) {
+  const fav = isFavourite(p);
+  const btn = el("button", { class: "fav-btn" + (fav ? " on" : ""), title: fav ? "Saved" : "Save phrase" });
+  btn.innerHTML = icon(fav ? "heartFill" : "heart", 16);
+  btn.addEventListener("click", e => {
+    e.stopPropagation();
+    toggleFavourite(p);
+    btn.classList.toggle("on");
+    btn.innerHTML = icon(isFavourite(p) ? "heartFill" : "heart", 16);
+  });
+  return btn;
+}
+
 function renderPhraseRow(p) {
   const item = el("div", { class: "phrase-item" });
   item.appendChild(el("div", { class: "phrase-en" }, p.en));
@@ -880,7 +1063,10 @@ function renderPhraseRow(p) {
     item.appendChild(el("div", { class: "phrase-script te" }, p.script));
   }
   if (p.note) item.appendChild(el("div", { class: "phrase-note" }, p.note));
-  item.appendChild(makeSpeakBtn(p.script || p.te));
+  const actions = el("div", { class: "phrase-actions" });
+  actions.appendChild(makeFavBtn(p));
+  actions.appendChild(makeSpeakBtn(p.script || p.te));
+  item.appendChild(actions);
   return item;
 }
 
@@ -914,6 +1100,7 @@ function renderQuiz(day, questions) {
         if (answers[qi] !== undefined) return;
         answers[qi] = oi;
         const isCorrect = oi === q.a;
+        haptic(isCorrect ? 8 : [10, 40, 10]);
         if (isCorrect) { btn.classList.add("correct"); correctSet[qi] = true; }
         else {
           btn.classList.add("wrong"); correctSet[qi] = false;
@@ -990,6 +1177,28 @@ function renderPhrasebook(filter = "") {
   const v = document.getElementById("phrasebook-view");
   v.innerHTML = "";
   const f = filter.toLowerCase().trim();
+
+  // Saved phrases at the top
+  const favKeys = state.favourites || [];
+  if (favKeys.length) {
+    const idx = getPhraseIndex();
+    const favPhrases = favKeys.map(k => idx[k]).filter(Boolean);
+    const filteredFavs = favPhrases.filter(it =>
+      !f || it.en.toLowerCase().includes(f) || it.te.toLowerCase().includes(f) || (it.script || "").includes(f)
+    );
+    if (filteredFavs.length) {
+      const section = el("div", { class: "phrase-group", id: "favourites-section" });
+      const header = el("h3", {});
+      header.innerHTML = `${icon("heartFill", 16)} <span>Saved phrases</span>`;
+      header.classList.add("with-icon");
+      section.appendChild(header);
+      const list = el("div", { class: "phrase-list" });
+      filteredFavs.forEach(it => list.appendChild(renderPhraseRow(it)));
+      section.appendChild(list);
+      v.appendChild(section);
+    }
+  }
+
   PHRASEBOOK.forEach(g => {
     const matching = g.items.filter(it =>
       !f || it.en.toLowerCase().includes(f) || it.te.toLowerCase().includes(f) || (it.script || "").includes(f)
@@ -1209,7 +1418,11 @@ function renderPracticeHub() {
   const hub = el("div", { class: "practice-hub" });
   tiles.forEach(t => {
     const disabled = (t.id === "review" && dueCount === 0) || (t.id === "weak" && weakCount === 0);
-    const tile = el("div", { class: "practice-tile" + (disabled ? " disabled" : ""), onclick: () => { if (!disabled) openPracticeMode(t.id); } });
+    const tile = el("div", {
+      class: "practice-tile" + (disabled ? " disabled" : ""),
+      "data-mode": t.id,
+      onclick: () => { if (!disabled) { haptic(8); openPracticeMode(t.id); } }
+    });
     if (t.badge) tile.appendChild(el("div", { class: "pt-badge" }, t.badge));
     tile.appendChild(el("div", { class: "pt-icon" }, t.icon));
     tile.appendChild(el("h3", {}, t.title));
@@ -2136,7 +2349,15 @@ function renderTranslator() {
       return;
     }
     if (payload.loading) {
-      resultBox.appendChild(el("div", { class: "translate-loading" }, "Translating…"));
+      const sk = el("div", { class: "translate-skeleton" });
+      sk.innerHTML = `
+        <div class="sk-line sk-label"></div>
+        <div class="sk-line sk-title"></div>
+        <div class="sk-line sk-row"></div>
+        <div class="sk-actions">
+          <div class="sk-pill"></div><div class="sk-pill"></div>
+        </div>`;
+      resultBox.appendChild(sk);
       return;
     }
     // Multiple-candidate suggestion mode
@@ -2398,10 +2619,17 @@ function startOnboarding() {
         state.todayMood = draft.mood;
         state.todayMoodDate = isoDate();
         state.hasOnboarded = true;
+        // We're taking the user straight into Day 1, so suppress the
+        // first-time welcome overlay on the post-lesson home view.
+        state.firstTimeWelcomeShown = true;
         saveState();
         overlay.style.display = "none";
-        renderDashboard();
-        celebrate("Welcome to Velugu!", `${CHARACTERS[draft.character].name} is excited to meet you.`, { skipSurprise: true });
+        celebrate("Welcome to Velugu!", `${CHARACTERS[draft.character].name} is ready to walk with you.`, { skipSurprise: true });
+        // Go straight to Day 1 — that's what "Light my first diya" promised
+        setTimeout(() => {
+          state.currentView.day = 1;
+          switchTab("lesson");
+        }, 1200);
       };
     }
   }
