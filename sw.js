@@ -1,5 +1,5 @@
 // Velugu service worker — bump CACHE on each meaningful deploy
-const CACHE = "velugu-v5";
+const CACHE = "velugu-v6";
 
 const ASSETS = [
   "./",

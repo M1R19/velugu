@@ -25,7 +25,11 @@ const defaultState = {
   notifyEnabled: false,     // user opted in to soft reminders
   lastNudgeDate: null,      // last date we surfaced a re-engagement notification
   unlockedTreasures: [],    // ids of surprise envelopes the user has opened
-  lastSurpriseDate: null    // ensures at most one surprise per day
+  lastSurpriseDate: null,   // ensures at most one surprise per day
+  translateDirection: "te-en", // "te-en" or "en-te"
+  translationHistory: [],   // [{ src, dst, dir, at }]
+  streakFreezesUsed: {},    // monthKey ("2026-05") -> count, max 3/month
+  installBannerDismissed: false
 };
 
 // ============================================================
@@ -306,9 +310,42 @@ function bumpStreakIfNeeded() {
   const today = isoDate();
   if (state.lastStudyDate === today) return;
   const yesterday = isoDate(new Date(Date.now() - 86400000));
-  state.streak = state.lastStudyDate === yesterday ? state.streak + 1 : 1;
+  const twoDaysAgo = isoDate(new Date(Date.now() - 2 * 86400000));
+
+  const monthKey = today.slice(0, 7); // "2026-05"
+  state.streakFreezesUsed = state.streakFreezesUsed || {};
+  const usedThisMonth = state.streakFreezesUsed[monthKey] || 0;
+  const freezesAvailable = 3 - usedThisMonth;
+
+  if (state.lastStudyDate === yesterday) {
+    state.streak += 1;
+  } else if (state.lastStudyDate === twoDaysAgo && state.streak >= 2 && freezesAvailable > 0) {
+    // Auto-apply a freeze: missed one day, but we keep the streak alive.
+    state.streakFreezesUsed[monthKey] = usedThisMonth + 1;
+    state.streak += 1;
+    setTimeout(() => showFreezeToast(state.streak, freezesAvailable - 1), 500);
+  } else {
+    state.streak = 1;
+  }
+
   state.lastStudyDate = today;
   saveState();
+}
+
+function showFreezeToast(streak, remaining) {
+  const toast = document.createElement("div");
+  toast.className = "freeze-toast";
+  toast.innerHTML = `
+    <div class="freeze-icon">❄️🪔</div>
+    <div class="freeze-body">
+      <div class="freeze-title">Your diya stayed lit</div>
+      <div class="freeze-sub">You missed a day — a freeze kept your <strong>${streak}-day</strong> streak going. ${remaining} ${remaining === 1 ? "freeze" : "freezes"} left this month.</div>
+    </div>
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add("dismiss"), 6500);
+  setTimeout(() => toast.remove(), 7200);
+  toast.addEventListener("click", () => toast.remove());
 }
 
 // ============================================================
@@ -545,6 +582,7 @@ function switchTab(name) {
   if (name === "lesson")     renderLesson(state.currentView.day);
   if (name === "practice")   renderPracticeHub();
   if (name === "scenarios")  renderScenariosHub();
+  if (name === "translator") renderTranslator();
   if (name === "phrasebook") renderPhrasebook();
   if (name === "settings")   renderSettings();
   window.scrollTo(0, 0);
@@ -726,10 +764,8 @@ document.getElementById("card-review").addEventListener("click", () => {
   switchTab("practice");
   setTimeout(() => openPracticeMode("review"), 50);
 });
-document.getElementById("card-rest").addEventListener("click", () => {
-  // Rest mode: lightweight — just 3 random phrases as flashcards
-  switchTab("practice");
-  setTimeout(() => openPracticeMode("flash"), 50);
+document.getElementById("card-translator").addEventListener("click", () => {
+  switchTab("translator");
 });
 document.getElementById("card-phrasebook").addEventListener("click", () => {
   switchTab("phrasebook");
@@ -919,8 +955,14 @@ function renderQuiz(day, questions) {
       if (day === state.unlockedDay && state.unlockedDay < LESSONS.length) state.unlockedDay = day + 1;
       bumpStreakIfNeeded();
       saveState();
-      if (wasNew) celebrate(`Day ${day} complete!`,
-        day < LESSONS.length ? `Day ${day + 1} is unlocked.` : "All 30 days finished!");
+      if (wasNew) {
+        if (day === LESSONS.length) {
+          // Day 30 finale — special treatment
+          setTimeout(() => showDay30Finale(), 400);
+        } else {
+          celebrate(`Day ${day} complete!`, `Day ${day + 1} is unlocked.`);
+        }
+      }
       if (day < LESSONS.length) {
         actions.appendChild(el("button", { class: "btn btn-primary",
           onclick: () => { state.currentView.day = day + 1; renderLesson(day + 1); window.scrollTo(0,0); }
@@ -1854,6 +1896,190 @@ function openScenario(id) {
 }
 
 // ============================================================
+// LIVE TRANSLATOR — Telugu ↔ English
+// Uses MyMemory's free public API (no auth required).
+// ============================================================
+async function translateText(text, fromLang, toLang) {
+  const trimmed = (text || "").trim();
+  if (!trimmed) throw new Error("empty");
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(trimmed)}&langpair=${fromLang}|${toLang}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`network ${resp.status}`);
+  const data = await resp.json();
+  if (!data || !data.responseData) throw new Error("bad response");
+  return {
+    translation: data.responseData.translatedText || "(no translation)",
+    quality: data.responseData.match || 0
+  };
+}
+
+function recordTranslation(src, dst, dir) {
+  state.translationHistory = state.translationHistory || [];
+  state.translationHistory.unshift({ src, dst, dir, at: Date.now() });
+  state.translationHistory = state.translationHistory.slice(0, 20);
+  saveState();
+}
+
+function renderTranslator() {
+  const v = document.getElementById("translator-view");
+  v.innerHTML = "";
+  v.appendChild(el("h2", {}, "Translator"));
+  v.appendChild(el("p", { class: "subtle" },
+    "Heard a Telugu phrase you don't recognise? Tap the mic, or paste the text — get the English meaning."));
+
+  // Direction toggle
+  const direction = state.translateDirection || "te-en";
+  const isTeToEn = direction === "te-en";
+  const dirRow = el("div", { class: "deck-picker" });
+  const teEnChip = el("button", {
+    class: "chip" + (isTeToEn ? " active" : ""),
+    onclick: () => { state.translateDirection = "te-en"; saveState(); renderTranslator(); }
+  }, "తెలుగు → English");
+  const enTeChip = el("button", {
+    class: "chip" + (!isTeToEn ? " active" : ""),
+    onclick: () => { state.translateDirection = "en-te"; saveState(); renderTranslator(); }
+  }, "English → తెలుగు");
+  dirRow.appendChild(teEnChip);
+  dirRow.appendChild(enTeChip);
+  v.appendChild(dirRow);
+
+  const fromLang = isTeToEn ? "te" : "en";
+  const toLang   = isTeToEn ? "en" : "te";
+
+  // Input card
+  const card = el("div", { class: "translate-card" });
+
+  // Mic button — only enabled when speech recognition supports the input language well (te-IN, en-US)
+  const micBtn = el("button", { class: "btn btn-primary mic-btn translate-mic" });
+  micBtn.innerHTML = `🎤 ${isTeToEn ? "Tap and listen" : "Tap and speak"}`;
+  micBtn.onclick = async () => {
+    if (!SR_SUPPORTED) {
+      setResult({ error: "Speech recognition isn't supported in this browser. Use Chrome or Edge — or just type below." });
+      return;
+    }
+    micBtn.classList.add("listening");
+    micBtn.innerHTML = "● Listening…";
+    try {
+      // Reuse the speech recognition helper but force language to source
+      const result = await new Promise((resolve, reject) => {
+        const recog = new SR_CTOR();
+        recog.lang = isTeToEn ? "te-IN" : "en-US";
+        recog.interimResults = false;
+        recog.maxAlternatives = 1;
+        recog.onresult = e => resolve(e.results[0][0].transcript);
+        recog.onerror = e => reject(e.error || new Error("recognition"));
+        recog.onend = () => {};
+        try { recog.start(); } catch (e) { reject(e); }
+      });
+      input.value = result;
+      await runTranslate(result);
+    } catch (err) {
+      const msg = String(err && err.message ? err.message : err);
+      let friendly = "Didn't catch that — try again.";
+      if (msg.includes("not-allowed") || msg.includes("denied")) friendly = "Microphone permission denied.";
+      else if (msg.includes("language-not-supported")) friendly = "Your browser doesn't have a model for that language.";
+      else if (msg.includes("no-speech")) friendly = "Didn't hear anything — try speaking louder.";
+      setResult({ error: friendly });
+    } finally {
+      micBtn.classList.remove("listening");
+      micBtn.innerHTML = `🎤 ${isTeToEn ? "Tap and listen" : "Tap and speak"}`;
+    }
+  };
+  card.appendChild(micBtn);
+
+  card.appendChild(el("div", { class: "translate-or" }, "— or type —"));
+
+  const input = document.createElement("textarea");
+  input.className = "translate-input";
+  input.rows = 3;
+  input.placeholder = isTeToEn
+    ? "Paste or type Telugu…  e.g.  నీళ్ళు తాగుతావా?"
+    : "Type English…  e.g.  Will you have water?";
+  card.appendChild(input);
+
+  const translateBtn = el("button", { class: "btn btn-primary translate-go" }, "Translate →");
+  translateBtn.onclick = () => runTranslate(input.value);
+  card.appendChild(translateBtn);
+
+  v.appendChild(card);
+
+  // Result placeholder
+  const resultBox = el("div", { id: "translate-result", class: "translate-result" });
+  v.appendChild(resultBox);
+
+  // Recent history
+  if (state.translationHistory && state.translationHistory.length) {
+    const histWrap = el("div", { class: "translate-history" });
+    histWrap.appendChild(el("h3", { class: "section-title" }, "Recent"));
+    state.translationHistory.slice(0, 8).forEach(h => {
+      const row = el("div", { class: "history-row" });
+      row.appendChild(el("div", { class: "history-src" }, h.src));
+      row.appendChild(el("div", { class: "history-arrow" }, "→"));
+      row.appendChild(el("div", { class: "history-dst" }, h.dst));
+      const tePart = h.dir === "te-en" ? h.src : h.dst;
+      row.appendChild(makeSpeakBtn(tePart));
+      histWrap.appendChild(row);
+    });
+    // Clear history button
+    const clearBtn = el("button", { class: "btn btn-ghost", style: "margin-top:12px;" }, "Clear history");
+    clearBtn.onclick = () => {
+      if (!confirm("Clear all translation history?")) return;
+      state.translationHistory = [];
+      saveState();
+      renderTranslator();
+    };
+    histWrap.appendChild(clearBtn);
+    v.appendChild(histWrap);
+  }
+
+  function setResult(payload) {
+    resultBox.innerHTML = "";
+    if (payload.error) {
+      resultBox.appendChild(el("div", { class: "translate-err" }, "⚠ " + payload.error));
+      return;
+    }
+    if (payload.loading) {
+      resultBox.appendChild(el("div", { class: "translate-loading" }, "Translating…"));
+      return;
+    }
+    const out = el("div", { class: "translate-output" });
+    out.appendChild(el("div", { class: "translate-label" }, isTeToEn ? "ENGLISH" : "తెలుగు"));
+    const text = el("div", { class: "translate-text" + (isTeToEn ? "" : " te") }, payload.translation);
+    out.appendChild(text);
+    if (payload.quality !== undefined && payload.quality < 0.7) {
+      out.appendChild(el("div", { class: "translate-warn" },
+        "ℹ Low confidence — this is a rough machine translation, may not be exact."));
+    }
+    const actions = el("div", { class: "translate-actions" });
+    // Play audio if Telugu side
+    const teText = isTeToEn ? payload.source : payload.translation;
+    actions.appendChild(makeSpeakBtn(teText));
+    const copyBtn = el("button", { class: "btn btn-ghost" }, "Copy");
+    copyBtn.onclick = () => {
+      navigator.clipboard?.writeText(payload.translation);
+      copyBtn.textContent = "Copied!";
+      setTimeout(() => copyBtn.textContent = "Copy", 1200);
+    };
+    actions.appendChild(copyBtn);
+    out.appendChild(actions);
+    resultBox.appendChild(out);
+  }
+
+  async function runTranslate(text) {
+    const trimmed = (text || "").trim();
+    if (!trimmed) return;
+    setResult({ loading: true });
+    try {
+      const { translation, quality } = await translateText(trimmed, fromLang, toLang);
+      setResult({ translation, quality, source: trimmed });
+      recordTranslation(trimmed, translation, direction);
+    } catch (err) {
+      setResult({ error: "Couldn't reach the translation service. Check your connection and try again." });
+    }
+  }
+}
+
+// ============================================================
 // ONBOARDING
 // ============================================================
 function startOnboarding() {
@@ -2012,6 +2238,77 @@ function startOnboarding() {
 }
 
 // ============================================================
+// DAY 30 FINALE
+// ============================================================
+function showDay30Finale() {
+  // Big confetti
+  const overlay = document.createElement("div");
+  overlay.className = "celebrate-overlay";
+  const colors = ["#E8896B", "#F4B860", "#7DA88A", "#D88FA0", "#B8A4D4", "#FFD4A3", "#FFF1C2"];
+  for (let i = 0; i < 160; i++) {
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = Math.random() * 100 + "vw";
+    c.style.background = colors[Math.floor(Math.random() * colors.length)];
+    c.style.animationDuration = (2.2 + Math.random() * 2.2) + "s";
+    c.style.animationDelay = (Math.random() * 0.8) + "s";
+    c.style.transform = `rotate(${Math.random() * 360}deg)`;
+    overlay.appendChild(c);
+  }
+  document.body.appendChild(overlay);
+
+  const character = CHARACTERS[state.character] || CHARACTERS.anu;
+  const scenariosPlayed = Object.keys(state.scenariosDone || {}).length;
+  const treasuresFound = (state.unlockedTreasures || []).length;
+
+  const finaleLines = {
+    anu:   `30 days. I knew you could. You came back through every quiet evening, every busy morning. Telugu lives in you now — not because you mastered it, but because you stayed with it. Promise me you'll keep using what you've learned.`,
+    amma:  `Look at you, child. Thirty days ago you were a stranger to Telugu. Today you can ask for tea, tell me your name, walk through my courtyard. The grammar is rusty, the words come slowly — but you are a Telugu speaker now. Don't stop.`,
+    rohan: `Yo. 30 days. I won't lie, I had bets you'd quit by day 12. You crushed it. Now go USE this — order chai in Telugu, message your friend something cheeky, watch a Tollywood film without subtitles for a scene or two. The app gave you the foundation; the world is where the real Telugu lives.`
+  };
+
+  const card = document.createElement("div");
+  card.className = "finale-card";
+  card.innerHTML = `
+    <div class="finale-glow"></div>
+    <div class="finale-content">
+      <div class="finale-icon">🪔🪔🪔</div>
+      <div class="finale-eyebrow">30 days complete</div>
+      <h1 class="finale-title">Welcome to the festival of lights.</h1>
+      <div class="finale-character">
+        <div class="finale-avatar" style="background:linear-gradient(135deg,var(--rose),var(--primary))">${character.initial}</div>
+        <div class="finale-line">${finaleLines[state.character] || finaleLines.anu}</div>
+      </div>
+      <div class="finale-stats">
+        <div class="finale-stat"><div class="fs-value">30</div><div class="fs-label">days</div></div>
+        <div class="finale-stat"><div class="fs-value">${state.streak}</div><div class="fs-label">streak</div></div>
+        <div class="finale-stat"><div class="fs-value">${scenariosPlayed}</div><div class="fs-label">scenarios</div></div>
+        <div class="finale-stat"><div class="fs-value">${treasuresFound}</div><div class="fs-label">treasures</div></div>
+      </div>
+      <div class="finale-next">
+        <h3>Where to go next</h3>
+        <ul>
+          <li>📺 Watch a Tollywood film with subtitles — try to catch one full sentence</li>
+          <li>🗣️ Find a language partner on Tandem or HelloTalk</li>
+          <li>☕ Order chai in Telugu next time you're at a stall</li>
+          <li>📖 Re-read scenarios that gave you trouble — they're permanent</li>
+          <li>🎯 Daily Review keeps phrases alive — open it once a week</li>
+        </ul>
+      </div>
+      <div class="finale-actions">
+        <button class="btn btn-primary finale-done">మంచిది — close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(card);
+  card.querySelector(".finale-done").addEventListener("click", () => {
+    card.classList.add("dismissed");
+    overlay.classList.add("dismissed");
+    setTimeout(() => { card.remove(); overlay.remove(); }, 500);
+  });
+}
+
+// ============================================================
 // SURPRISE ENVELOPES — variable rewards (~1 in 3, max once per day)
 // ============================================================
 function maybeShowSurprise() {
@@ -2114,6 +2411,83 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
   });
 }
 
+// --------- install prompt ---------
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  setTimeout(maybeShowInstallBanner, 1500);
+});
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  removeInstallBanner();
+  state.installBannerDismissed = true;
+  saveState();
+});
+
+function isAppInstalled() {
+  return window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+}
+
+function maybeShowInstallBanner() {
+  if (state.installBannerDismissed) return;
+  if (isAppInstalled()) return;
+  if (!state.hasOnboarded) return;
+  if (document.getElementById("install-banner")) return;
+
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const canPrompt = !!deferredInstallPrompt;
+  if (!canPrompt && !isIos) return; // nothing useful to offer
+
+  const banner = document.createElement("div");
+  banner.id = "install-banner";
+  banner.className = "install-banner";
+  if (isIos && !canPrompt) {
+    banner.innerHTML = `
+      <div class="ib-icon">🪔</div>
+      <div class="ib-body">
+        <div class="ib-title">Install Velugu</div>
+        <div class="ib-sub">Tap <strong>Share</strong> ↑, then <strong>Add to Home Screen</strong>.</div>
+      </div>
+      <button class="ib-close" aria-label="Dismiss">×</button>
+    `;
+  } else {
+    banner.innerHTML = `
+      <div class="ib-icon">🪔</div>
+      <div class="ib-body">
+        <div class="ib-title">Install Velugu</div>
+        <div class="ib-sub">Works offline, lives on your home screen.</div>
+      </div>
+      <button class="btn btn-primary ib-install">Install</button>
+      <button class="ib-close" aria-label="Dismiss">×</button>
+    `;
+  }
+  document.body.appendChild(banner);
+
+  banner.querySelector(".ib-close").addEventListener("click", () => {
+    state.installBannerDismissed = true;
+    saveState();
+    removeInstallBanner();
+  });
+  banner.querySelector(".ib-install")?.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === "accepted") {
+      state.installBannerDismissed = true;
+      saveState();
+    }
+    deferredInstallPrompt = null;
+    removeInstallBanner();
+  });
+}
+
+function removeInstallBanner() {
+  const b = document.getElementById("install-banner");
+  if (b) b.remove();
+}
+
 function maybeFireSoftReminder() {
   if (!state.notifyEnabled) return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;
@@ -2153,4 +2527,6 @@ if (!state.hasOnboarded) {
 } else {
   // Fire a soft reminder if user opted in and they've been away
   setTimeout(maybeFireSoftReminder, 800);
+  // On iOS Safari, beforeinstallprompt never fires — surface the banner ourselves.
+  setTimeout(maybeShowInstallBanner, 2500);
 }

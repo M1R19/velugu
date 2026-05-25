@@ -1161,6 +1161,125 @@ select, input[type="range"] {
 }
 
 /* ============================================================
+   Translator
+   ============================================================ */
+.translate-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-top: 12px;
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px;
+}
+.translate-mic {
+  font-size: 16px;
+  padding: 16px 28px;
+  border-radius: 999px;
+}
+.translate-or {
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.translate-input {
+  width: 100%;
+  min-height: 84px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--text);
+  resize: vertical;
+  line-height: 1.5;
+  transition: border 0.2s;
+}
+.translate-input.te { font-family: var(--te-font); }
+.translate-input:focus { outline: 2px solid var(--primary); border-color: transparent; }
+.translate-go {
+  align-self: stretch;
+  padding: 14px;
+  font-size: 15px;
+}
+.translate-result {
+  margin-top: 12px;
+}
+.translate-output {
+  background: linear-gradient(135deg, var(--primary-soft), rgba(244, 184, 96, 0.18));
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 20px 22px;
+  animation: fade-in 0.4s ease-out;
+}
+.translate-label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.translate-text {
+  font-family: var(--display);
+  font-size: 22px;
+  line-height: 1.4;
+  color: var(--text);
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+.translate-text.te {
+  font-family: var(--te-font);
+  font-size: 24px;
+  color: var(--primary);
+}
+.translate-warn {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
+  font-style: italic;
+}
+.translate-actions {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.translate-err {
+  background: rgba(201, 94, 94, 0.10);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 14px;
+}
+.translate-loading {
+  text-align: center;
+  color: var(--muted);
+  padding: 20px;
+  font-style: italic;
+  animation: gentle-pulse 1.4s ease-in-out infinite;
+}
+.translate-history {
+  margin-top: 28px;
+}
+.history-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.history-src { color: var(--text); font-weight: 500; }
+.history-arrow { color: var(--muted); }
+.history-dst { color: var(--primary); font-weight: 500; }
+
+/* ============================================================
    "For you" badge (interest match)
    ============================================================ */
 .for-you-badge {
@@ -1175,6 +1294,189 @@ select, input[type="range"] {
   letter-spacing: 0.4px;
   vertical-align: middle;
 }
+
+/* ============================================================
+   Freeze toast (streak forgiveness)
+   ============================================================ */
+.freeze-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #B8E0F4, #7DA8C0);
+  color: #1A2A3A;
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 0 12px 36px rgba(125, 168, 192, 0.5);
+  z-index: 300;
+  display: flex; align-items: center; gap: 14px;
+  max-width: 440px;
+  width: calc(100% - 32px);
+  cursor: pointer;
+  animation: freeze-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.freeze-toast.dismiss { animation: freeze-out 0.6s ease-in forwards; }
+@keyframes freeze-in {
+  0%   { opacity: 0; transform: translate(-50%, 30px); }
+  100% { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes freeze-out {
+  0%   { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, 30px); }
+}
+.freeze-icon { font-size: 32px; flex-shrink: 0; }
+.freeze-title { font-weight: 700; margin-bottom: 4px; font-family: var(--display); }
+.freeze-sub { font-size: 13px; line-height: 1.4; }
+
+/* ============================================================
+   Day 30 finale
+   ============================================================ */
+.finale-card {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: rgba(20, 15, 10, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+  animation: fade-in 0.6s ease-out;
+}
+.finale-card.dismissed { animation: fade-out 0.5s ease-in forwards; }
+@keyframes fade-out { to { opacity: 0; } }
+.finale-glow {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(244, 184, 96, 0.4) 0%, transparent 70%);
+  pointer-events: none;
+  animation: gentle-pulse 4s ease-in-out infinite;
+}
+.finale-content {
+  position: relative;
+  background: var(--surface);
+  border-radius: 24px;
+  padding: 40px 36px;
+  max-width: 560px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  border: 2px solid var(--primary);
+  animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.finale-icon { font-size: 48px; margin-bottom: 6px; }
+.finale-eyebrow {
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--primary);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.finale-title {
+  font-family: var(--display);
+  font-size: 32px;
+  font-weight: 500;
+  margin: 0 0 24px;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+.finale-character {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 14px;
+  align-items: center;
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 22px;
+  text-align: left;
+}
+.finale-avatar {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 600;
+  color: white;
+}
+.finale-line { font-size: 14px; line-height: 1.55; color: var(--text); }
+.finale-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.finale-stat {
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 14px 8px;
+}
+.fs-value {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--primary);
+}
+.fs-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.finale-next {
+  text-align: left;
+  background: linear-gradient(135deg, var(--primary-soft), rgba(244, 184, 96, 0.12));
+  border-radius: 14px;
+  padding: 18px 22px;
+  margin-bottom: 22px;
+}
+.finale-next h3 {
+  font-family: var(--display);
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 500;
+}
+.finale-next ul { margin: 0; padding-left: 0; list-style: none; }
+.finale-next li { padding: 6px 0; font-size: 14px; color: var(--text); }
+.finale-actions { display: flex; justify-content: center; }
+.finale-done {
+  padding: 12px 32px;
+  font-size: 15px;
+}
+
+/* ============================================================
+   Install banner
+   ============================================================ */
+.install-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--primary);
+  border-radius: 16px;
+  padding: 14px 18px;
+  display: flex; align-items: center; gap: 14px;
+  max-width: 440px;
+  width: calc(100% - 32px);
+  box-shadow: 0 12px 36px rgba(232, 137, 107, 0.25);
+  z-index: 250;
+  animation: freeze-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ib-icon { font-size: 28px; flex-shrink: 0; }
+.ib-body { flex: 1; }
+.ib-title { font-family: var(--display); font-weight: 500; font-size: 16px; }
+.ib-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.ib-install { padding: 8px 16px; font-size: 13px; }
+.ib-close {
+  background: transparent;
+  border: 0;
+  font-size: 24px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+.ib-close:hover { color: var(--text); }
 
 /* ============================================================
    Treasure envelope (variable reward)
